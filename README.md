@@ -7,6 +7,8 @@
 [![Electron](https://img.shields.io/badge/Electron-33-47848F)](https://www.electronjs.org/)
 [![PRs Welcome](https://img.shields.io/badge/PRs-welcome-brightgreen.svg)](CONTRIBUTING.md)
 
+**English** · [简体中文](#中文简介)
+
 M-Ryuga opens a `pcap`/`pcapng` file and turns raw packets into an answerable call: who called whom,
 how the call was negotiated, when media started, which DTMF digits were pressed, why it failed, and
 what the audio actually sounded like — without uploading anything.
@@ -87,17 +89,6 @@ src/
 scripts/           # icon generation, self-tests, CDP smoke test
 ```
 
-## Contributing
-
-Bug reports and pull requests are welcome. Please read [CONTRIBUTING.md](CONTRIBUTING.md) first.
-Security issues: see [SECURITY.md](SECURITY.md).
-
-## License
-
-[MIT](LICENSE) © 2026 M-Ryuga contributors
-
----
-
 ## 中文简介
 
 **M-Ryuga 是一款本地优先的 VoIP 抓包取证工具**，用于 SIP / RTP 通话分析与质量诊断。
@@ -121,3 +112,12 @@ Security issues: see [SECURITY.md](SECURITY.md).
 实时抓包需安装 [npcap](https://npcap.com/) 与 Wireshark 自带的 `dumpcap.exe`，程序会检测并给出下载入口。
 
 **构建**：`npm install` → `npm run build` → `npm run dist`。核心解析层位于 `src/core`，不依赖 Electron。
+
+## Contributing
+
+Bug reports and pull requests are welcome. Please read [CONTRIBUTING.md](CONTRIBUTING.md) first.
+Security issues: see [SECURITY.md](SECURITY.md).
+
+## License
+
+[MIT](LICENSE) © 2026 M-Ryuga contributors
