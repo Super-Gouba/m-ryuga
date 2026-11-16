@@ -500,14 +500,24 @@ function idxOfActor(actors, addr, fallback) {
 /* 报文详情面板 */
 function MsgPane({ item }) {
   const { showToast } = useStore();
+  const [open, setOpen] = useState(false);
   if (!item) return <div className="msg-pane"><div className="empty" style={{ flex: 1 }}>选择一条信令</div></div>;
+
+  const expandBtn = (
+    <button className="btn sm ghost" title="放大查看" onClick={() => setOpen(true)} style={{ marginLeft: 'auto' }}>⤢ 放大</button>
+  );
+  const modal = open ? <MessageModal item={item} onClose={() => setOpen(false)} /> : null;
 
   if (item.type === 'dtmf') {
     const d = item.event;
     return (
+      <>
       <div className="msg-pane">
         <div className="msg-pane-head">
-          <div className="mp-title" style={{ color: 'var(--amber)' }}>DTMF 按键 {d.digit}</div>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+            <div className="mp-title" style={{ color: 'var(--amber)' }}>DTMF 按键 {d.digit}</div>
+            {expandBtn}
+          </div>
           <div className="mp-row">时间：<b>{fmtTime(d.startUs)}</b></div>
           <div className="mp-row">通道：<b>{d.via}</b></div>
           {d.durationMs != null && <div className="mp-row">时长：<b>{Math.round(d.durationMs)} ms</b></div>}
@@ -521,6 +531,8 @@ function MsgPane({ item }) {
           </div>
         </div>
       </div>
+      {modal}
+      </>
     );
   }
 
@@ -528,9 +540,13 @@ function MsgPane({ item }) {
     const md = item.media;
     const dur = md.endUs && md.startUs ? (md.endUs - md.startUs) / 1e6 : null;
     return (
+      <>
       <div className="msg-pane">
         <div className="msg-pane-head">
-          <div className="mp-title" style={{ color: 'var(--orange)' }}>RTP 媒体流 · {md.codec}</div>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+            <div className="mp-title" style={{ color: 'var(--orange)' }}>RTP 媒体流 · {md.codec}</div>
+            {expandBtn}
+          </div>
           <div className="mp-row">源：<b>{md.src}</b>　目的：<b>{md.dst}</b></div>
           <div className="mp-row">
             包数：<b>{md.packets}</b>
@@ -547,6 +563,8 @@ function MsgPane({ item }) {
           </div>
         </div>
       </div>
+      {modal}
+      </>
     );
   }
 
@@ -557,9 +575,13 @@ function MsgPane({ item }) {
     catch { showToast('err', '复制失败'); }
   };
   return (
+    <>
     <div className="msg-pane">
       <div className="msg-pane-head">
-        <div className="mp-title" style={{ color: clsColor(msg.cls) }}>{msgLabel(msg)}</div>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+          <div className="mp-title" style={{ color: clsColor(msg.cls) }}>{msgLabel(msg)}</div>
+          {expandBtn}
+        </div>
         <div className="mp-row">时间：<b>{fmtTime(msg.tsUs)}</b> · UDP</div>
         <div className="mp-row">源：<b>{msg.src}</b>　目的：<b>{msg.dst}</b></div>
         <div className="mp-actions">
@@ -568,6 +590,125 @@ function MsgPane({ item }) {
       </div>
       <div className="msg-pane-body">
         <div className="msg-text">{renderMsg(msg)}</div>
+      </div>
+    </div>
+    {modal}
+    </>
+  );
+}
+
+/* 放大查看：Homer 风格报文卡片弹窗 */
+function MessageModal({ item, onClose }) {
+  const { showToast } = useStore();
+  const [max, setMax] = useState(false);
+  const [wrap, setWrap] = useState(true);
+
+  useEffect(() => {
+    const onKey = e => { if (e.key === 'Escape') onClose(); };
+    window.addEventListener('keydown', onKey);
+    return () => window.removeEventListener('keydown', onKey);
+  }, [onClose]);
+
+  const meta = [];
+  let title = '';
+  let body = null;
+  let raw = '';
+
+  if (item.type === 'sip') {
+    const m = item.msg;
+    title = msgLabel(m);
+    meta.push(
+      ['TYPE', m.kind === 'request' ? 'REQUEST' : 'RESPONSE'],
+      ['METHOD', m.kind === 'request' ? m.method : m.cseqMethod || '—'],
+      ['STATUS', m.kind === 'request' ? '—' : `${m.status}${m.reason ? ' ' + m.reason : ''}`],
+      ['TIME', fmtTime(m.tsUs)],
+      ['SRC', m.src], ['DST', m.dst],
+      ['CSEQ', String(m.cseq ?? '—')],
+      ['CALL-ID', m.callId || '—'],
+      ['FROM', m.fromUri || m.from?.uri || '—'],
+      ['TO', m.toUri || m.to?.uri || '—'],
+      ['USER-AGENT', m.ua || '—'],
+      ['TRANSPORT', 'UDP']
+    );
+    body = <div className="msg-text" style={{ whiteSpace: wrap ? 'pre-wrap' : 'pre' }}>{renderMsg(m)}</div>;
+    raw = rawText(m);
+  } else if (item.type === 'dtmf') {
+    const d = item.event;
+    title = `DTMF ${d.digit}`;
+    meta.push(
+      ['TYPE', 'DTMF EVENT'], ['DIGIT', d.digit], ['TIME', fmtTime(d.startUs)],
+      ['CHANNEL', d.via], ['DURATION', d.durationMs != null ? `${Math.round(d.durationMs)} ms` : '—'],
+      ['SRC', d.src || '—'], ['DST', d.dst || '—']
+    );
+    body = (
+      <div style={{ fontSize: 13, color: 'var(--fg2)', lineHeight: 1.9 }}>
+        该按键来自媒体侧 DTMF 事件（非 SIP 信令）。<br />
+        · RFC 2833/4733：RTP 电话事件包，独立 PT（通常 101）<br />
+        · SIP INFO：随 INFO 报文下发，正文含 Signal / Duration<br />
+        · 带内音频：按键音混在语音频带内，通过频域检测识别
+      </div>
+    );
+  } else {
+    const md = item.media;
+    title = `RTP ${md.codec}`;
+    meta.push(
+      ['TYPE', 'RTP STREAM'], ['CODEC', md.codec], ['PACKETS', String(md.packets)],
+      ['SRC', md.src], ['DST', md.dst],
+      ['START', fmtTime(md.startUs)], ['END', fmtTime(md.endUs)],
+      ['SPAN', md.endUs ? `${((md.endUs - md.startUs) / 1e6).toFixed(1)} s` : '—'],
+      ['LOST', String(md.lost || 0)],
+      ['JITTER', md.jitterMs != null ? `${Number(md.jitterMs).toFixed(1)} ms` : '—']
+    );
+    body = (
+      <div style={{ fontSize: 13, color: 'var(--fg2)', lineHeight: 1.9 }}>
+        该行代表一条 RTP 媒体流（不是 SIP 信令）。关闭弹窗后点击该行可跳到「双向试听」并独听此方向。
+      </div>
+    );
+  }
+
+  const copy = async () => {
+    if (!raw) return;
+    try { await navigator.clipboard.writeText(raw); showToast('ok', '已复制原文'); }
+    catch { showToast('err', '复制失败'); }
+  };
+
+  return (
+    <div className="modal-mask" onMouseDown={e => { if (e.target === e.currentTarget) onClose(); }}>
+      <div className={`msg-modal ${max ? 'is-max' : ''}`} onMouseDown={e => e.stopPropagation()}>
+        <div className="msg-modal-head">
+          <span className="mm-title">{title}</span>
+          <span className="mm-sub">{item.type === 'sip' ? 'SIP message' : item.type === 'dtmf' ? 'DTMF event' : 'RTP stream'}</span>
+          <div style={{ flex: 1 }} />
+          {item.type === 'sip' && (
+            <button className="mm-btn" title="切换换行" onClick={() => setWrap(w => !w)}>{wrap ? '⇥ 不换行' : '↵ 换行'}</button>
+          )}
+          {item.type === 'sip' && <button className="mm-btn" title="复制原文" onClick={copy}>⧉ 复制</button>}
+          <button className="mm-btn" title={max ? '还原' : '最大化'} onClick={() => setMax(m => !m)}>{max ? '⇲' : '⤢'}</button>
+          <button className="mm-btn" title="关闭 (Esc)" onClick={onClose}>✕</button>
+        </div>
+
+        <div className="msg-modal-body">
+          <div className="mm-section">DETAILS</div>
+          <div className="mm-meta">
+            {meta.map(([k, v]) => (
+              <div key={k} className="mm-cell">
+                <div className="mm-k">{k}</div>
+                <div className={`mm-v ${/^(TIME|START|END|CSEQ|PACKETS|STATUS|DIGIT|LOST|JITTER|SPAN|DURATION)$/.test(k) ? 'mono' : ''}`} title={String(v)}>{String(v)}</div>
+              </div>
+            ))}
+          </div>
+
+          {item.type === 'sip' && (
+            <>
+              <div className="mm-section" style={{ marginTop: 14 }}>
+                PAYLOAD
+                <span className="mm-hint">共 {raw.split('\n').length} 行</span>
+              </div>
+              <div className="mm-payload">{body}</div>
+            </>
+          )}
+          {item.type !== 'sip' && <div style={{ marginTop: 12 }}>{body}</div>}
+        </div>
       </div>
     </div>
   );

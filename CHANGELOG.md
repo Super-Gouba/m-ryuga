@@ -4,6 +4,20 @@ All notable changes to this project are documented in this file.
 The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and this project
 adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.0.1] — 2026-11-16
+
+### Added
+- **Expanded message view** — the message pane now has an expand button that opens a Homer-style card:
+  header with message type, a `DETAILS` metadata grid (method, status, time, endpoints, CSeq, Call-ID,
+  From/To, User-Agent, transport) and a syntax-highlighted `PAYLOAD` panel.
+  Supports maximize/restore, word-wrap toggle, copy raw message and `Esc` to close.
+- `docs/RELEASE.md` — release SOP covering versioning, verification, packaging, publishing and
+  update-path validation.
+
+### Changed
+- Message detail pane moved to a consistent header with the expand action for SIP messages,
+  DTMF events and RTP streams.
+
 ## [1.0.0] — 2026-11-16
 
 ### Added
@@ -29,4 +43,5 @@ adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 - No audio in dual-channel playback for captures without SDP (direction slot collision).
 - Layout imbalance on very wide displays and lack of stacking on narrow windows.
 
+[1.0.1]: https://github.com/Super-Gouba/m-ryuga/releases/tag/v1.0.1
 [1.0.0]: https://github.com/Super-Gouba/m-ryuga/releases/tag/v1.0.0

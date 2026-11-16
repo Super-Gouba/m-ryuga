@@ -424,6 +424,41 @@ select.input { cursor: pointer; }
 .ladder-legend .lg i.dash { height: 0; border-top: 2px dashed; background: none !important; }
 .ladder-legend .lg i.pill { height: 10px; width: 22px; border-radius: 6px; border: 1px solid; }
 
+/* 报文放大弹窗（Homer 风格） */
+.msg-modal {
+  width: min(1080px, 92vw); height: min(78vh, 860px);
+  display: flex; flex-direction: column; overflow: hidden;
+  background: var(--bg2); border: 1px solid var(--line2);
+  border-radius: 12px; box-shadow: var(--shadow-3);
+}
+.msg-modal.is-max { width: 96vw; height: 92vh; }
+.msg-modal-head {
+  display: flex; align-items: center; gap: 10px; flex-shrink: 0;
+  padding: 9px 12px; border-bottom: 1px solid var(--line); background: var(--bg3);
+}
+.mm-title { font-family: var(--font-mono); font-weight: 700; font-size: 13.5px; color: var(--fg); }
+.mm-sub { font-size: 11px; color: var(--fg3); }
+.mm-btn {
+  border: none; background: transparent; color: var(--fg2); cursor: pointer;
+  padding: 4px 9px; border-radius: 6px; font-size: 12px; white-space: nowrap;
+}
+.mm-btn:hover { background: rgba(22,32,43,.07); color: var(--fg); }
+.msg-modal-body { flex: 1; min-height: 0; overflow: auto; padding: 14px 16px 18px; }
+.mm-section {
+  display: flex; align-items: center; gap: 8px;
+  font-size: 10.5px; font-weight: 700; letter-spacing: .9px; color: var(--fg3);
+  margin-bottom: 9px;
+}
+.mm-hint { font-weight: 400; letter-spacing: 0; }
+.mm-meta { display: grid; grid-template-columns: repeat(auto-fit, minmax(188px, 1fr)); gap: 11px 18px; }
+.mm-cell { min-width: 0; }
+.mm-k { font-size: 10.5px; letter-spacing: .5px; color: var(--fg3); }
+.mm-v { font-size: 12.5px; color: var(--fg); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.mm-payload {
+  background: var(--bg3); border: 1px solid var(--line); border-radius: 8px;
+  padding: 12px 14px; overflow: auto;
+}
+
 /* 体检分组：随宽度自适应列数 */
 .diag-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(340px, 1fr)); gap: 12px; align-items: start; }
 .kvl { display: grid; grid-template-columns: 88px minmax(0, 1fr); gap: 6px 10px; font-size: 12.3px; }
