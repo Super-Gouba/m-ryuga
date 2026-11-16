@@ -4,6 +4,18 @@ All notable changes to this project are documented in this file.
 The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and this project
 adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.0.2] — 2026-11-16
+
+### Added
+- Settings entry in the bottom-right status bar, with an active state and a back button on the settings page.
+- Open-source row in **About M-Ryuga** with GitHub and MIT license links.
+
+### Changed
+- Message rendering now uses a high-contrast palette: methods and URIs, header names, URIs/agents/numeric
+  values and SDP lines are colored separately, matching the readability of Homer's signaling view.
+- `Software update` moved from its own settings page into the bottom of **About M-Ryuga**.
+- Settings navigation no longer occupies a top-level tab.
+
 ## [1.0.1] — 2026-11-16
 
 ### Added
@@ -43,5 +55,6 @@ adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 - No audio in dual-channel playback for captures without SDP (direction slot collision).
 - Layout imbalance on very wide displays and lack of stacking on narrow windows.
 
+[1.0.2]: https://github.com/Super-Gouba/m-ryuga/releases/tag/v1.0.2
 [1.0.1]: https://github.com/Super-Gouba/m-ryuga/releases/tag/v1.0.1
 [1.0.0]: https://github.com/Super-Gouba/m-ryuga/releases/tag/v1.0.0

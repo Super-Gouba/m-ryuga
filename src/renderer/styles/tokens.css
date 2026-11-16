@@ -70,6 +70,17 @@
   --sig-4xx: #a9622e;
   --sig-5xx: #b1443c;
   --sig-reg: #6a58a5;
+
+  /* 报文着色：参考 Homer 的高对比配色（浅底上仍清晰可辨） */
+  --msg-key: #0b6b60;
+  --msg-val: #242f3b;
+  --msg-uri: #5a34b8;
+  --msg-num: #126b3c;
+  --msg-agent: #a04f06;
+  --msg-sdp-o: #1a5fa8;
+  --msg-sdp-m: #a8490b;
+  --msg-sdp-v: #7a5a00;
+  --msg-dim: #98a1ab;
 }
 
 * { box-sizing: border-box; margin: 0; padding: 0; }
@@ -181,15 +192,28 @@ select.input { cursor: pointer; }
 .msg-text {
   font-family: var(--font-mono); font-size: 11.8px; line-height: 1.62;
   white-space: pre-wrap; word-break: break-word; user-select: text;
+  color: var(--msg-val);
 }
-.msg-text .ln-method { color: var(--sig-inv); font-weight: 700; }
-.msg-text .ln-status-ok { color: var(--sig-ok); font-weight: 700; }
-.msg-text .ln-status-err { color: var(--sig-5xx); font-weight: 700; }
-.msg-text .ln-status-prov { color: var(--sig-bye); font-weight: 700; }
-.msg-text .hkey { color: #6a5da0; }
-.msg-text .hval { color: #3d4753; }
-.msg-text .sdp { color: #6c757f; }
-.msg-text .dim { color: #a3a9b1; }
+.msg-text .ln-start { font-weight: 700; }
+.msg-text .ln-method { font-weight: 700; }
+.msg-text .ln-uri { color: var(--msg-uri); font-weight: 600; }
+.msg-text .ln-status-ok { color: var(--msg-num); font-weight: 700; }
+.msg-text .ln-status-err { color: #b32626; font-weight: 700; }
+.msg-text .ln-status-prov { color: var(--msg-agent); font-weight: 700; }
+.msg-text .hkey { color: var(--msg-key); font-weight: 600; }
+.msg-text .hsep { color: var(--msg-dim); }
+.msg-text .hval { color: var(--msg-val); }
+.msg-text .hval-uri { color: var(--msg-uri); }
+.msg-text .hval-num { color: var(--msg-num); }
+.msg-text .hval-agent { color: var(--msg-agent); }
+.msg-text .sdp-k { color: var(--msg-uri); font-weight: 600; }
+.msg-text .sdp-v { color: var(--msg-val); }
+.msg-text .sdp-c .sdp-k { color: var(--msg-key); }
+.msg-text .sdp-m .sdp-k { color: var(--msg-sdp-m); }
+.msg-text .sdp-o .sdp-k { color: var(--msg-sdp-o); }
+.msg-text .sdp-v .sdp-k { color: var(--msg-sdp-v); }
+.msg-text .sdp-t .sdp-k, .msg-text .sdp-s .sdp-k { color: var(--msg-dim); }
+.msg-text .dim { color: var(--msg-dim); }
 
 .cls-inv { color: var(--sig-inv); }
 .cls-ack { color: var(--sig-ack); }
@@ -289,6 +313,14 @@ select.input { cursor: pointer; }
 }
 .statusbar .sb-dot { color: #6fae86; }
 .statusbar .sb-dot.busy { color: var(--accent); }
+.statusbar .sb-set {
+  display: inline-flex; align-items: center; gap: 4px; border: none; background: transparent;
+  color: var(--fg2); font-size: 11.5px; font-family: inherit; cursor: pointer;
+  padding: 1px 7px; border-radius: 5px; transition: background .12s, color .12s;
+}
+.statusbar .sb-set:hover { background: var(--bg4); color: var(--fg); }
+.statusbar .sb-set[data-active] { background: var(--accent-soft); color: var(--accent); }
+.statusbar .sb-sep { width: 1px; height: 11px; background: var(--line2); }
 
 /* ---- 拖放遮罩 ---- */
 .dropmask {
@@ -446,18 +478,19 @@ select.input { cursor: pointer; }
 .msg-modal-body { flex: 1; min-height: 0; overflow: auto; padding: 14px 16px 18px; }
 .mm-section {
   display: flex; align-items: center; gap: 8px;
-  font-size: 10.5px; font-weight: 700; letter-spacing: .9px; color: var(--fg3);
+  font-size: 10.5px; font-weight: 700; letter-spacing: .9px; color: var(--fg2);
   margin-bottom: 9px;
 }
-.mm-hint { font-weight: 400; letter-spacing: 0; }
-.mm-meta { display: grid; grid-template-columns: repeat(auto-fit, minmax(188px, 1fr)); gap: 11px 18px; }
+.mm-hint { font-weight: 400; letter-spacing: 0; color: var(--fg3); }
+.mm-meta { display: grid; grid-template-columns: repeat(auto-fit, minmax(188px, 1fr)); gap: 12px 18px; }
 .mm-cell { min-width: 0; }
-.mm-k { font-size: 10.5px; letter-spacing: .5px; color: var(--fg3); }
-.mm-v { font-size: 12.5px; color: var(--fg); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.mm-k { font-size: 10.5px; font-weight: 700; letter-spacing: .5px; color: var(--msg-key); }
+.mm-v { font-size: 13px; color: var(--fg); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .mm-payload {
-  background: var(--bg3); border: 1px solid var(--line); border-radius: 8px;
+  background: #fff; border: 1px solid var(--line2); border-radius: 8px;
   padding: 12px 14px; overflow: auto;
 }
+.mm-payload .msg-text { font-size: 12.3px; line-height: 1.72; }
 
 /* 体检分组：随宽度自适应列数 */
 .diag-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(340px, 1fr)); gap: 12px; align-items: start; }
@@ -539,7 +572,13 @@ select.input { cursor: pointer; }
   padding: 14px 8px 10px; overflow: auto; display: flex; flex-direction: column;
   background: var(--bg3);
 }
-.sn-head { font-size: 13px; font-weight: 700; padding: 2px 10px 10px; color: var(--fg2); }
+.sn-head { display: flex; align-items: center; gap: 6px; font-size: 13px; font-weight: 700; padding: 2px 6px 10px; color: var(--fg2); }
+.sn-back {
+  border: 1px solid var(--line); background: var(--bg1); color: var(--fg2);
+  width: 22px; height: 22px; border-radius: 6px; cursor: pointer; font-size: 12px;
+  display: inline-flex; align-items: center; justify-content: center; flex-shrink: 0;
+}
+.sn-back:hover { border-color: var(--accent-line); color: var(--accent); }
 .sn-group { font-size: 10.5px; color: var(--fg3); padding: 10px 10px 4px; letter-spacing: .5px; }
 .sn-item {
   display: flex; align-items: center; gap: 7px; padding: 6px 10px; border-radius: 6px;
@@ -561,6 +600,14 @@ select.input { cursor: pointer; }
 .set-label { font-size: 13px; color: var(--fg); font-weight: 500; }
 .set-desc { font-size: 11.8px; color: var(--fg3); margin-top: 2px; line-height: 1.6; }
 .about-head { display: flex; align-items: center; gap: 12px; padding-bottom: 12px; border-bottom: 1px solid var(--line); margin-bottom: 2px; }
+.about-name { font-size: 16px; font-weight: 700; color: var(--fg); letter-spacing: .2px; }
+.settings-subtitle { font-size: 13.5px; font-weight: 700; color: var(--fg2); margin: 10px 2px 0; }
+.about-links { display: flex; align-items: center; gap: 4px; flex-wrap: wrap; justify-content: flex-end; flex-shrink: 0; }
+.linkbtn {
+  border: none; background: transparent; color: var(--accent); font-family: inherit;
+  font-size: 12.5px; cursor: pointer; padding: 3px 6px; border-radius: 5px;
+}
+.linkbtn:hover { background: var(--accent-soft); text-decoration: underline; }
 
 @media (max-width: 860px) {
   .settings-nav { width: 172px; }

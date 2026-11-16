@@ -722,21 +722,43 @@ function clsColor(cls) {
   }[cls] || 'var(--fg2)';
 }
 
-const REQ_COLOR = { INVITE: 'var(--sig-inv)', ACK: 'var(--sig-ack)', BYE: 'var(--sig-bye)', CANCEL: 'var(--sig-bye)', REGISTER: 'var(--sig-reg)', OPTIONS: 'var(--sig-ack)', INFO: 'var(--blue)', UPDATE: 'var(--blue)', PRACK: 'var(--blue)' };
+const REQ_COLOR = { INVITE: 'var(--msg-uri)', ACK: 'var(--msg-key)', BYE: 'var(--msg-agent)', CANCEL: 'var(--msg-agent)', REGISTER: '#7a3fa8', OPTIONS: 'var(--msg-key)', INFO: 'var(--msg-sdp-o)', UPDATE: 'var(--msg-sdp-o)', PRACK: 'var(--msg-sdp-o)' };
 
-/* 带语法着色的报文渲染 */
+/* 头部值的语义配色：URI 类、UA、数字类分别着色，便于快速扫读 */
+const HDR_URI = new Set(['From', 'To', 'Contact', 'Call-ID', 'Remote-Party-ID', 'P-Asserted-Identity', 'P-Preferred-Identity', 'Refer-To', 'Referred-By', 'Subscription-State']);
+const HDR_AGENT = new Set(['User-Agent', 'Server']);
+const HDR_NUM = new Set(['Content-Length', 'CSeq', 'Max-Forwards', 'RSeq', 'Session-Expires', 'Min-SE', 'Expires']);
+
+function hvalCls(k) {
+  if (HDR_URI.has(k)) return 'hval hval-uri';
+  if (HDR_AGENT.has(k)) return 'hval hval-agent';
+  if (HDR_NUM.has(k)) return 'hval hval-num';
+  return 'hval';
+}
+
+/* 带语法着色的报文渲染（Homer 风格：方法/URI、头名、头值、SDP 逐层分色） */
 function renderMsg(m) {
   const nodes = [];
   const startLine = m.startLine || '';
-  const statusCls = m.kind === 'request' ? 'ln-method'
-    : (m.status >= 200 && m.status < 300) ? 'ln-status-ok'
+
+  if (m.kind === 'request') {
+    const method = startLine.split(/\s+/)[0] || '';
+    nodes.push(
+      <div key="sl" className="ln-start">
+        <span className="ln-method" style={{ color: REQ_COLOR[method] || 'var(--msg-uri)' }}>{method}</span>
+        <span className="ln-uri">{startLine.slice(method.length)}</span>
+      </div>
+    );
+  } else {
+    const cls = (m.status >= 200 && m.status < 300) ? 'ln-status-ok'
       : (m.status >= 400) ? 'ln-status-err' : 'ln-status-prov';
-  nodes.push(<div key="sl" className={statusCls}>{startLine}</div>);
+    nodes.push(<div key="sl" className={cls}>{startLine}</div>);
+  }
 
   (m.hdrs || []).forEach(([k, v], i) => {
     nodes.push(
       <div key={`h${i}`}>
-        <span className="hkey">{k}</span>: <span className="hval">{v}</span>
+        <span className="hkey">{k}</span><span className="hsep">:</span> <span className={hvalCls(k)}>{v}</span>
       </div>
     );
   });
@@ -745,8 +767,16 @@ function renderMsg(m) {
     nodes.push(<div key="body-gap" className="dim">{'\u00a0'}</div>);
     String(m.body).split(/\r?\n/).forEach((line, i) => {
       if (!line) return;
-      const isSdp = /^[a-z]=/.test(line);
-      nodes.push(<div key={`b${i}`} className={isSdp ? 'sdp' : ''}>{line}</div>);
+      const sdp = /^([a-z])=([\s\S]*)$/.exec(line);
+      if (sdp) {
+        nodes.push(
+          <div key={`b${i}`} className={`sdpline sdp-${sdp[1]}`}>
+            <span className="sdp-k">{sdp[1]}=</span><span className="sdp-v">{sdp[2]}</span>
+          </div>
+        );
+      } else {
+        nodes.push(<div key={`b${i}`} className="sdp-v">{line}</div>);
+      }
     });
   }
   return nodes;

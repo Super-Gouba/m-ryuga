@@ -236,7 +236,8 @@ function Shell() {
         {page === 'settings' && <SettingsPage />}
       </main>
 
-      <StatusBar files={files} calls={calls} analyzing={analyzing} taskCount={tasks.length} />
+      <StatusBar files={files} calls={calls} analyzing={analyzing} taskCount={tasks.length}
+        page={page} onSettings={() => dispatch({ type: 'page', page: 'settings' })} />
 
       {dragging && (
         <div className="dropmask">
@@ -262,8 +263,7 @@ const NAV = [
   ['calls', '◧'],
   ['compare', '⇄'],
   ['live', '⏺'],
-  ['asr', '⌨'],
-  ['settings', '⚙']
+  ['asr', '⌨']
 ];
 
 function AppBar({ page, setPage, callCount, onImport, busy }) {
@@ -367,7 +367,7 @@ function FileTabs({ files, activeFile, calls, onPick, onRemove, onImport }) {
 /* ============================================================
    状态栏
    ============================================================ */
-function StatusBar({ files, calls, analyzing, taskCount }) {
+function StatusBar({ files, calls, analyzing, taskCount, page, onSettings }) {
   return (
     <footer className="statusbar">
       <span className={analyzing ? 'sb-dot busy pulsing' : 'sb-dot'}>●</span>
@@ -376,6 +376,10 @@ function StatusBar({ files, calls, analyzing, taskCount }) {
       <span>{t('status.calls')} {calls.length}</span>
       {files.some(f => f.truncated) && <span style={{ color: 'var(--amber)' }}>⚠ {t('status.truncated')}</span>}
       <div style={{ flex: 1 }} />
+      <button className="sb-set" data-active={page === 'settings' || undefined} onClick={onSettings} title={t('set.title')}>
+        ⚙ {t('nav.settings')}
+      </button>
+      <span className="sb-sep" />
       <VersionTag />
     </footer>
   );
