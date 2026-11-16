@@ -81,6 +81,9 @@ It must report the new version and open the release page.
 
 ## 6. Aftercare
 
+- Delete previous installers from `release/` so the folder only holds the current version
+  (`M-Ryuga-Setup-<version>.exe`, `M-Ryuga-Portable-<version>.exe`); old builds stay available on the
+  GitHub release page.
 - Confirm both assets are downloadable and their sizes match `release/`.
 - If the release is broken, mark it as pre-release, publish a fixed patch, and document it in the changelog.
 - Keep `.github/workflows/release.yml` in sync; publishing it requires a token with the `workflow` scope.
