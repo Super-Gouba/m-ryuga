@@ -597,11 +597,21 @@ function MsgPane({ item }) {
   );
 }
 
-/* 放大查看：Homer 风格报文卡片弹窗 */
+/* 放大查看：Homer 风格报文卡片弹窗；详情字段用协议原名 / 中文可读名，值可换行、可点击复制 */
+const META_LABEL_KEY = {
+  TIME: 'mm.time', SRC: 'mm.src', DST: 'mm.dst', STATUS: 'mm.status', METHOD: 'mm.method',
+  CSEQ: 'mm.cseq', 'CALL-ID': 'mm.callid', FROM: 'mm.from', TO: 'mm.to', 'USER-AGENT': 'mm.ua',
+  CHANNEL: 'mm.channel', DURATION: 'mm.duration', CODEC: 'mm.codec', PACKETS: 'mm.packets',
+  START: 'mm.start', END: 'mm.end', SPAN: 'mm.span', LOST: 'mm.lost', JITTER: 'mm.jitter', DIGIT: 'mm.digit'
+};
+const metaLabel = k => (META_LABEL_KEY[k] ? t(META_LABEL_KEY[k]) : k);
+const MONO_FIELDS = /^(TIME|START|END|CSEQ|PACKETS|STATUS|DIGIT|LOST|JITTER|SPAN|DURATION)$/;
+
 function MessageModal({ item, onClose }) {
   const { showToast } = useStore();
   const [max, setMax] = useState(false);
   const [wrap, setWrap] = useState(true);
+  const [copied, setCopied] = useState('');
 
   useEffect(() => {
     const onKey = e => { if (e.key === 'Escape') onClose(); };
@@ -617,18 +627,18 @@ function MessageModal({ item, onClose }) {
   if (item.type === 'sip') {
     const m = item.msg;
     title = msgLabel(m);
+    // 只保留有分辨价值的字段：类型/传输等已在标题与报文中体现
+    if (m.kind !== 'request') {
+      meta.push(['STATUS', `${m.status}${m.reason ? ' ' + m.reason : ''}`], ['METHOD', m.cseqMethod || '—']);
+    }
     meta.push(
-      ['TYPE', m.kind === 'request' ? 'REQUEST' : 'RESPONSE'],
-      ['METHOD', m.kind === 'request' ? m.method : m.cseqMethod || '—'],
-      ['STATUS', m.kind === 'request' ? '—' : `${m.status}${m.reason ? ' ' + m.reason : ''}`],
       ['TIME', fmtTime(m.tsUs)],
       ['SRC', m.src], ['DST', m.dst],
       ['CSEQ', String(m.cseq ?? '—')],
       ['CALL-ID', m.callId || '—'],
       ['FROM', m.fromUri || m.from?.uri || '—'],
       ['TO', m.toUri || m.to?.uri || '—'],
-      ['USER-AGENT', m.ua || '—'],
-      ['TRANSPORT', 'UDP']
+      ['USER-AGENT', m.ua || '—']
     );
     body = <div className="msg-text" style={{ whiteSpace: wrap ? 'pre-wrap' : 'pre' }}>{renderMsg(m)}</div>;
     raw = rawText(m);
@@ -636,64 +646,63 @@ function MessageModal({ item, onClose }) {
     const d = item.event;
     title = `DTMF ${d.digit}`;
     meta.push(
-      ['TYPE', 'DTMF EVENT'], ['DIGIT', d.digit], ['TIME', fmtTime(d.startUs)],
+      ['DIGIT', d.digit], ['TIME', fmtTime(d.startUs)],
       ['CHANNEL', d.via], ['DURATION', d.durationMs != null ? `${Math.round(d.durationMs)} ms` : '—'],
       ['SRC', d.src || '—'], ['DST', d.dst || '—']
     );
-    body = (
-      <div style={{ fontSize: 13, color: 'var(--fg2)', lineHeight: 1.9 }}>
-        该按键来自媒体侧 DTMF 事件（非 SIP 信令）。<br />
-        · RFC 2833/4733：RTP 电话事件包，独立 PT（通常 101）<br />
-        · SIP INFO：随 INFO 报文下发，正文含 Signal / Duration<br />
-        · 带内音频：按键音混在语音频带内，通过频域检测识别
-      </div>
-    );
+    body = <div style={{ fontSize: 13, color: 'var(--fg2)', lineHeight: 1.9 }}>{t('mm.dtmfNote')}</div>;
   } else {
     const md = item.media;
     title = `RTP ${md.codec}`;
     meta.push(
-      ['TYPE', 'RTP STREAM'], ['CODEC', md.codec], ['PACKETS', String(md.packets)],
+      ['CODEC', md.codec], ['PACKETS', String(md.packets)],
       ['SRC', md.src], ['DST', md.dst],
       ['START', fmtTime(md.startUs)], ['END', fmtTime(md.endUs)],
       ['SPAN', md.endUs ? `${((md.endUs - md.startUs) / 1e6).toFixed(1)} s` : '—'],
       ['LOST', String(md.lost || 0)],
       ['JITTER', md.jitterMs != null ? `${Number(md.jitterMs).toFixed(1)} ms` : '—']
     );
-    body = (
-      <div style={{ fontSize: 13, color: 'var(--fg2)', lineHeight: 1.9 }}>
-        该行代表一条 RTP 媒体流（不是 SIP 信令）。关闭弹窗后点击该行可跳到「双向试听」并独听此方向。
-      </div>
-    );
+    body = <div style={{ fontSize: 13, color: 'var(--fg2)', lineHeight: 1.9 }}>{t('mm.rtpNote')}</div>;
   }
 
   const copy = async () => {
     if (!raw) return;
-    try { await navigator.clipboard.writeText(raw); showToast('ok', '已复制原文'); }
-    catch { showToast('err', '复制失败'); }
+    try { await navigator.clipboard.writeText(raw); showToast('ok', t('msg.copied')); }
+    catch { showToast('err', t('msg.copy')); }
   };
+
+  const copyField = async (k, v) => {
+    try {
+      await navigator.clipboard.writeText(String(v));
+      setCopied(k);
+      setTimeout(() => setCopied(''), 1200);
+    } catch { showToast('err', t('msg.copy')); }
+  };
+
+  const typeLabel = item.type === 'sip' ? t('mm.sipMsg') : item.type === 'dtmf' ? t('mm.dtmfEvent') : t('mm.rtpStream');
 
   return (
     <div className="modal-mask" onMouseDown={e => { if (e.target === e.currentTarget) onClose(); }}>
       <div className={`msg-modal ${max ? 'is-max' : ''}`} onMouseDown={e => e.stopPropagation()}>
         <div className="msg-modal-head">
           <span className="mm-title">{title}</span>
-          <span className="mm-sub">{item.type === 'sip' ? 'SIP message' : item.type === 'dtmf' ? 'DTMF event' : 'RTP stream'}</span>
+          <span className="mm-sub">{typeLabel}</span>
           <div style={{ flex: 1 }} />
           {item.type === 'sip' && (
-            <button className="mm-btn" title="切换换行" onClick={() => setWrap(w => !w)}>{wrap ? '⇥ 不换行' : '↵ 换行'}</button>
+            <button className="mm-btn" title={t('mm.wrap')} onClick={() => setWrap(w => !w)}>{wrap ? `⇥ ${t('mm.nowrap')}` : `↵ ${t('mm.wrap')}`}</button>
           )}
-          {item.type === 'sip' && <button className="mm-btn" title="复制原文" onClick={copy}>⧉ 复制</button>}
-          <button className="mm-btn" title={max ? '还原' : '最大化'} onClick={() => setMax(m => !m)}>{max ? '⇲' : '⤢'}</button>
-          <button className="mm-btn" title="关闭 (Esc)" onClick={onClose}>✕</button>
+          {item.type === 'sip' && <button className="mm-btn" title={t('msg.copy')} onClick={copy}>⧉ {t('mm.copyShort') || t('msg.copy')}</button>}
+          <button className="mm-btn" title={max ? t('mm.restore') : t('mm.maximize')} onClick={() => setMax(m => !m)}>{max ? '⇲' : '⤢'}</button>
+          <button className="mm-btn" title={t('mm.close')} onClick={onClose}>✕</button>
         </div>
 
         <div className="msg-modal-body">
-          <div className="mm-section">DETAILS</div>
+          <div className="mm-section">{t('mm.details')}</div>
           <div className="mm-meta">
             {meta.map(([k, v]) => (
-              <div key={k} className="mm-cell">
-                <div className="mm-k">{k}</div>
-                <div className={`mm-v ${/^(TIME|START|END|CSEQ|PACKETS|STATUS|DIGIT|LOST|JITTER|SPAN|DURATION)$/.test(k) ? 'mono' : ''}`} title={String(v)}>{String(v)}</div>
+              <div key={k} className="mm-cell" onClick={() => copyField(k, v)} title={`${metaLabel(k)}: ${v}\n${t('mm.copyHint')}`}>
+                <div className={`mm-k ${copied === k ? 'is-copied' : ''}`}>{metaLabel(k)}{copied === k ? ' ✓' : ''}</div>
+                <div className={`mm-v ${MONO_FIELDS.test(k) ? 'mono' : ''}`}>{String(v)}</div>
               </div>
             ))}
           </div>
@@ -701,8 +710,8 @@ function MessageModal({ item, onClose }) {
           {item.type === 'sip' && (
             <>
               <div className="mm-section" style={{ marginTop: 14 }}>
-                PAYLOAD
-                <span className="mm-hint">共 {raw.split('\n').length} 行</span>
+                {t('mm.payload')}
+                <span className="mm-hint">{t('mm.lines', { n: raw.split('\n').length })}</span>
               </div>
               <div className="mm-payload">{body}</div>
             </>

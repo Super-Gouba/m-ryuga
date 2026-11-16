@@ -4,6 +4,24 @@ All notable changes to this project are documented in this file.
 The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and this project
 adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.0.3] — 2026-11-16
+
+### Added
+- Message detail fields are click-to-copy with inline confirmation; values now wrap instead of being
+  truncated with an ellipsis, so long URIs and Call-IDs stay fully readable.
+- Chinese labels for detail fields (时间 / 源地址 / 目的地址 / 主叫 / 被叫 / 用户代理), while CSeq and
+  Call-ID keep their protocol names.
+
+### Changed
+- Simplified **DETAILS** in the message modal: dropped `TYPE` and `TRANSPORT`, show `STATUS` and
+  `METHOD` only for responses.
+- Settings entry moved to the bottom-left corner of the status bar with a larger icon and label.
+- Settings page spacing, navigation width and typography refined.
+- Simplified Chinese is now the default interface language.
+
+### Removed
+- Old release artifacts are cleaned from `release/` when a new version is built.
+
 ## [1.0.2] — 2026-11-16
 
 ### Added
@@ -55,6 +73,7 @@ adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 - No audio in dual-channel playback for captures without SDP (direction slot collision).
 - Layout imbalance on very wide displays and lack of stacking on narrow windows.
 
+[1.0.3]: https://github.com/Super-Gouba/m-ryuga/releases/tag/v1.0.3
 [1.0.2]: https://github.com/Super-Gouba/m-ryuga/releases/tag/v1.0.2
 [1.0.1]: https://github.com/Super-Gouba/m-ryuga/releases/tag/v1.0.1
 [1.0.0]: https://github.com/Super-Gouba/m-ryuga/releases/tag/v1.0.0

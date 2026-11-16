@@ -370,16 +370,15 @@ function FileTabs({ files, activeFile, calls, onPick, onRemove, onImport }) {
 function StatusBar({ files, calls, analyzing, taskCount, page, onSettings }) {
   return (
     <footer className="statusbar">
+      <button className="sb-set" data-active={page === 'settings' || undefined} onClick={onSettings} title={t('set.title')}>
+        <span className="sb-ico">⚙</span>{t('nav.settings')}
+      </button>
       <span className={analyzing ? 'sb-dot busy pulsing' : 'sb-dot'}>●</span>
       <span>{analyzing ? `${t('status.analyzing')} · ${taskCount} ${t('status.tasks')}` : t('status.ready')}</span>
       <span>{t('status.files')} {files.length}</span>
       <span>{t('status.calls')} {calls.length}</span>
       {files.some(f => f.truncated) && <span style={{ color: 'var(--amber)' }}>⚠ {t('status.truncated')}</span>}
       <div style={{ flex: 1 }} />
-      <button className="sb-set" data-active={page === 'settings' || undefined} onClick={onSettings} title={t('set.title')}>
-        ⚙ {t('nav.settings')}
-      </button>
-      <span className="sb-sep" />
       <VersionTag />
     </footer>
   );

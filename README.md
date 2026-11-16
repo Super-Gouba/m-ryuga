@@ -29,7 +29,7 @@ Everything runs on your machine. No accounts, no telemetry, no cloud processing.
 | **Live capture** | npcap/dumpcap integration, multi-interface, BPF filters, ring/split modes, real-time call view, **save-or-discard on stop** |
 | **Transcripts** | Optional offline transcription through [whisper.cpp](https://github.com/ggerganov/whisper.cpp) with GGML models |
 | **Export** | Associated packets (PCAPNG), per-direction WAV, self-contained HTML report, privacy masking for numbers and IPs |
-| **Bilingual UI** | English (default) and Simplified Chinese, switchable at runtime |
+| **Bilingual UI** | Simplified Chinese (default) and English, switchable at runtime |
 | **Workflow** | In-app update check against GitHub Releases, resizable panes, zoom controls, light professional theme |
 
 ## Screenshots

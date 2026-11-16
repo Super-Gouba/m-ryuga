@@ -37,6 +37,16 @@ const dict = {
     'legend.hint': 'Click a SIP row to read the message · click an RTP row to play that direction',
     'msg.source': 'Source', 'msg.dest': 'Destination', 'msg.copy': 'Copy raw', 'msg.copied': 'Copied',
     'msg.time': 'Time', 'msg.channel': 'Channel', 'msg.duration': 'Duration',
+    'mm.time': 'TIME', 'mm.src': 'SRC', 'mm.dst': 'DST', 'mm.status': 'STATUS', 'mm.method': 'METHOD',
+    'mm.cseq': 'CSEQ', 'mm.callid': 'CALL-ID', 'mm.from': 'FROM', 'mm.to': 'TO', 'mm.ua': 'USER-AGENT',
+    'mm.channel': 'CHANNEL', 'mm.duration': 'DURATION', 'mm.codec': 'CODEC', 'mm.packets': 'PACKETS',
+    'mm.start': 'START', 'mm.end': 'END', 'mm.span': 'SPAN', 'mm.lost': 'LOST', 'mm.jitter': 'JITTER',
+    'mm.digit': 'DIGIT', 'mm.copyHint': 'Click to copy',
+    'mm.details': 'DETAILS', 'mm.payload': 'PAYLOAD', 'mm.lines': '{n} lines', 'mm.copyShort': 'Copy',
+    'mm.sipMsg': 'SIP message', 'mm.dtmfEvent': 'DTMF event', 'mm.rtpStream': 'RTP stream',
+    'mm.wrap': 'Wrap', 'mm.nowrap': 'No wrap', 'mm.maximize': 'Maximize', 'mm.restore': 'Restore', 'mm.close': 'Close (Esc)',
+    'mm.dtmfNote': 'This key comes from a media-plane DTMF event, not SIP signaling. RFC 2833/4733 delivers it as RTP telephone-events (PT 101); SIP INFO carries Signal / Duration; in-band tones are detected in the frequency domain.',
+    'mm.rtpNote': 'This row is an RTP media stream, not SIP signaling. Close this dialog and click the row to solo this direction in Audio.',
     'msg.dtmfTitle': 'DTMF key', 'msg.dtmfNote': 'This is a media-plane DTMF event, displayed as a summary row in the message list.',
     'msg.rtpTitle': 'RTP media', 'msg.rtpSpan': 'Span', 'msg.rtpHint': 'Click this row to open Audio and solo this direction.',
     'msgs.filter': 'Filter signaling / keys',
@@ -80,7 +90,7 @@ const dict = {
     'asr.open': 'Open model folder', 'asr.recommended': 'Recommended models', 'asr.detected': 'Detected models',
     'asr.run': 'Start transcription', 'asr.running': 'Transcribing…', 'asr.result': 'Result', 'asr.select': 'Select a call',
     'asr.merge': 'Merge', 'asr.split': 'Per direction', 'asr.needSetup': 'Offline engine or model not ready',
-    'set.language': 'Language', 'set.languageDesc': 'Applies immediately; default is English'
+    'set.language': 'Language', 'set.languageDesc': 'Applies immediately; default is Simplified Chinese'
   },
   zh: {
     'brand.sub': 'SIP / RTP 抓包分析',
@@ -115,6 +125,16 @@ const dict = {
     'legend.hint': '点击 SIP 行查看报文原文 · 点击 RTP 行播放该方向音频',
     'msg.source': '源', 'msg.dest': '目的', 'msg.copy': '复制原文', 'msg.copied': '已复制',
     'msg.time': '时间', 'msg.channel': '通道', 'msg.duration': '时长',
+    'mm.time': '时间', 'mm.src': '源地址', 'mm.dst': '目的地址', 'mm.status': '状态', 'mm.method': '方法',
+    'mm.cseq': 'CSeq', 'mm.callid': 'Call-ID', 'mm.from': '主叫', 'mm.to': '被叫', 'mm.ua': '用户代理',
+    'mm.channel': '通道', 'mm.duration': '时长', 'mm.codec': '编码', 'mm.packets': '包数',
+    'mm.start': '开始', 'mm.end': '结束', 'mm.span': '跨度', 'mm.lost': '丢失', 'mm.jitter': '抖动',
+    'mm.digit': '按键', 'mm.copyHint': '点击复制',
+    'mm.details': '字段详情', 'mm.payload': '报文正文', 'mm.lines': '共 {n} 行', 'mm.copyShort': '复制',
+    'mm.sipMsg': 'SIP 报文', 'mm.dtmfEvent': 'DTMF 事件', 'mm.rtpStream': 'RTP 媒体流',
+    'mm.wrap': '换行', 'mm.nowrap': '不换行', 'mm.maximize': '最大化', 'mm.restore': '还原', 'mm.close': '关闭 (Esc)',
+    'mm.dtmfNote': '该按键来自媒体侧 DTMF 事件（非 SIP 信令）：RFC 2833/4733 为 RTP 电话事件包（PT 101）；SIP INFO 随报文下发 Signal / Duration；带内按键音通过频域检测识别。',
+    'mm.rtpNote': '该行代表一条 RTP 媒体流（不是 SIP 信令）。关闭弹窗后点击该行，可跳到「双向试听」并独听此方向。',
     'msg.dtmfTitle': 'DTMF 按键', 'msg.dtmfNote': '该按键来自媒体侧 DTMF 事件（非 SIP 信令），仅在报文列表中出现一行摘要。',
     'msg.rtpTitle': 'RTP 媒体流', 'msg.rtpSpan': '跨度', 'msg.rtpHint': '点击该行即可自动切到「双向试听」并独听此方向。',
     'msgs.filter': '过滤信令 / 按键',
@@ -158,15 +178,16 @@ const dict = {
     'asr.open': '打开模型目录', 'asr.recommended': '推荐模型', 'asr.detected': '已检测到的模型',
     'asr.run': '开始转写', 'asr.running': '识别中…', 'asr.result': '识别结果', 'asr.select': '选择通话',
     'asr.merge': '合并识别', 'asr.split': '按方向分轨', 'asr.needSetup': '离线识别环境未就绪',
-    'set.language': '语言', 'set.languageDesc': '立即生效，默认英文'
+    'set.language': '语言', 'set.languageDesc': '立即生效，默认简体中文'
   }
 };
 
-let lang = 'en';
+let lang = 'zh';
 try {
   const saved = localStorage.getItem(STORE_KEY);
   if (saved === 'zh' || saved === 'en') lang = saved;
 } catch { /* 忽略 */ }
+try { document.documentElement.lang = lang === 'zh' ? 'zh-CN' : 'en'; } catch { /* 忽略 */ }
 
 const listeners = new Set();
 
