@@ -1,0 +1,63 @@
+name: Bug report
+description: Report a defect so we can reproduce and fix it
+title: "[Bug] "
+labels: ["bug"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Thanks for the report. Please **do not attach real customer captures** — sanitize numbers,
+        IPs and credentials, or generate a synthetic capture that still reproduces the problem.
+  - type: input
+    id: version
+    attributes:
+      label: Version
+      description: Shown in Settings → About
+      placeholder: "1.0.0"
+    validations:
+      required: true
+  - type: dropdown
+    id: build
+    attributes:
+      label: Build
+      options:
+        - Installer (NSIS)
+        - Portable
+        - Built from source
+    validations:
+      required: true
+  - type: input
+    id: os
+    attributes:
+      label: Operating system
+      placeholder: "Windows 11 23H2 x64, display scale 150%"
+    validations:
+      required: true
+  - type: textarea
+    id: steps
+    attributes:
+      label: Steps to reproduce
+      placeholder: |
+        1. Import capture …
+        2. Select call …
+        3. Click …
+    validations:
+      required: true
+  - type: textarea
+    id: expected
+    attributes:
+      label: Expected behaviour
+    validations:
+      required: true
+  - type: textarea
+    id: actual
+    attributes:
+      label: Actual behaviour
+      description: Include error dialogs or console output when available
+    validations:
+      required: true
+  - type: textarea
+    id: capture
+    attributes:
+      label: Capture details (optional)
+      description: Encoding, SDP presence, number of streams, whether media is one-way

@@ -1,0 +1,51 @@
+{
+  "name": "m-ryuga",
+  "productName": "M-Ryuga",
+  "version": "1.0.0",
+  "description": "Local-first VoIP capture workstation for SIP / RTP forensics and call-quality diagnostics",
+  "main": "src/main/main.js",
+  "author": "M-Ryuga contributors",
+  "license": "MIT",
+  "private": true,
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/Super-Gouba/m-ryuga.git"
+  },
+  "homepage": "https://github.com/Super-Gouba/m-ryuga#readme",
+  "bugs": {
+    "url": "https://github.com/Super-Gouba/m-ryuga/issues"
+  },
+  "keywords": [
+    "voip",
+    "sip",
+    "rtp",
+    "pcap",
+    "dtmf",
+    "forensics",
+    "electron"
+  ],
+  "scripts": {
+    "dev:ui": "vite",
+    "dev": "cross-env VITE_DEV=1 electron .",
+    "build:ui": "vite build",
+    "test": "node scripts/selftest.js",
+    "smoke:ui": "node scripts/smoke-ui.js",
+    "icons": "node scripts/gen-icon.js",
+    "pack": "npm run icons && npm run build:ui && electron-builder --dir",
+    "dist": "npm run icons && npm run build:ui && electron-builder --win nsis portable"
+  },
+  "dependencies": {
+    "@fontsource/chakra-petch": "^5.1.0",
+    "@fontsource/jetbrains-mono": "^5.1.0",
+    "react": "^18.3.1",
+    "react-dom": "^18.3.1"
+  },
+  "devDependencies": {
+    "@vitejs/plugin-react": "^4.3.4",
+    "concurrently": "^9.1.0",
+    "cross-env": "^7.0.3",
+    "electron": "^33.2.0",
+    "electron-builder": "^25.1.8",
+    "vite": "^5.4.11"
+  }
+}

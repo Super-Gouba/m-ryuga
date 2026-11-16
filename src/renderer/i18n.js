@@ -1,0 +1,196 @@
+// M-Ryuga — 国际化（默认英文，可切中文）
+import { useEffect, useState } from 'react';
+
+const STORE_KEY = 'mryuga.lang';
+
+const dict = {
+  en: {
+    'brand.sub': 'SIP / RTP Analysis',
+    'nav.calls': 'Calls', 'nav.compare': 'Compare', 'nav.live': 'Capture', 'nav.asr': 'Transcribe', 'nav.settings': 'Settings',
+    'btn.import': 'Import capture', 'search.placeholder': 'Search number / Call-ID / status',
+    'tabs.all': 'All files', 'tabs.files': 'files', 'tabs.calls': 'calls', 'tabs.msgs': 'messages', 'tabs.anomalies': 'issues',
+    'status.ready': 'Ready', 'status.analyzing': 'Analyzing', 'status.files': 'Files', 'status.calls': 'Calls',
+    'status.truncated': 'Incomplete capture detected', 'status.tasks': 'tasks',
+    'drop.title': 'Drop capture files here, or click to browse',
+    'drop.sub': 'Supports .pcap / .pcapng / .cap · multiple files · up to 1 GiB each',
+    'drop.drag': 'Release to import', 'drop.dragSub': 'You can drop several captures at once',
+    'list.all': 'All', 'list.issues': 'Issues only', 'list.matched': 'matched', 'list.abnormal': 'issues',
+    'list.search': 'Number / Call-ID / IP', 'list.empty': 'No matching calls',
+    'list.durationUnknown': 'unknown', 'list.notEnded': 'unended', 'list.select': 'Select a call from the list',
+    'detail.start': 'Start', 'detail.duration': 'Duration', 'detail.end': 'End', 'detail.codec': 'Codec', 'detail.messages': 'Messages',
+    'tab.overview': 'Call overview', 'tab.ladder': 'Ladder', 'tab.messages': 'Messages', 'tab.audio': 'Audio', 'tab.export': 'Export',
+    'sev.ok': 'OK', 'sev.warn': 'Warning', 'sev.error': 'Error', 'sev.info': 'Attention',
+    'ov.file': 'Capture file', 'ov.call': 'Current call', 'ov.proto': 'Protocol mix',
+    'ov.fileName': 'File', 'ov.size': 'Size', 'ov.packets': 'Packets', 'ov.first': 'First packet', 'ov.last': 'Last packet',
+    'ov.span': 'Time span', 'ov.state': 'State', 'ov.complete': 'Complete', 'ov.truncated': 'Truncated',
+    'ov.caller': 'Caller', 'ov.callee': 'Callee', 'ov.start': 'Start time', 'ov.end': 'End', 'ov.duration': 'Talk time',
+    'ov.codec': 'Codec', 'ov.sipMsgs': 'SIP messages', 'ov.dtmf': 'DTMF keys', 'ov.dtmfSeq': 'Key sequence', 'ov.media': 'Media streams',
+    'ov.noSdp': 'Not negotiated (no SDP)', 'ov.none': 'None', 'ov.streams': 'streams', 'ov.rtpPkts': 'RTP packets',
+    'proto.sip': 'SIP', 'proto.rtp': 'RTP', 'proto.other': 'Other',
+    'diag.timeline': 'Timeline', 'diag.title': 'Diagnosis', 'diag.pass': 'No significant issues found',
+    'diag.connect': 'Answered', 'diag.ring': 'Ring time', 'diag.endBy': 'Ended by', 'diag.endCause': 'Q.850',
+    'diag.media': 'RTP media', 'diag.dirA': 'Caller direction A → B', 'diag.dirB': 'Callee direction B → A',
+    'diag.noStream': 'No RTP captured for this direction', 'diag.packets': 'Packets', 'diag.lost': 'Lost',
+    'diag.jitter': 'Jitter', 'diag.keys': 'DTMF', 'diag.noKeys': 'No DTMF detected (2833 / INFO / in-band)',
+    'diag.decoding': 'Decoding media…',
+    'legend.request': 'Request', 'legend.ok': 'Success', 'legend.fail': 'Failure', 'legend.rtp': 'RTP media', 'legend.dtmf': 'DTMF',
+    'legend.hint': 'Click a SIP row to read the message · click an RTP row to play that direction',
+    'msg.source': 'Source', 'msg.dest': 'Destination', 'msg.copy': 'Copy raw', 'msg.copied': 'Copied',
+    'msg.time': 'Time', 'msg.channel': 'Channel', 'msg.duration': 'Duration',
+    'msg.dtmfTitle': 'DTMF key', 'msg.dtmfNote': 'This is a media-plane DTMF event, displayed as a summary row in the message list.',
+    'msg.rtpTitle': 'RTP media', 'msg.rtpSpan': 'Span', 'msg.rtpHint': 'Click this row to open Audio and solo this direction.',
+    'msgs.filter': 'Filter signaling / keys',
+    'audio.play': 'Play', 'audio.pause': 'Pause', 'audio.solo': 'Solo', 'audio.mute': 'Mute', 'audio.zoom': 'Zoom',
+    'audio.caller': 'Caller direction A', 'audio.callee': 'Callee direction B', 'audio.seek': 'Drag to seek',
+    'audio.waveHint': 'Click the waveform to seek', 'audio.noMedia': 'No RTP audio available',
+    'audio.decoding': 'Decoding media…', 'audio.unsupported': 'recognized, decoding not supported yet',
+    'export.title': 'Export', 'export.items': 'What to export', 'export.pcapng': 'Associated packets (PCAPNG: SIP + RTP)',
+    'export.wav': 'Per-direction WAV (caller / callee / mixed)', 'export.report': 'HTML analysis report (single file)',
+    'export.privacy': 'Privacy masking', 'export.maskUser': 'Mask numbers (keep last 4 digits)', 'export.maskIp': 'Mask IPs (keep first 2 octets)',
+    'export.run': 'Choose folder and export', 'export.running': 'Exporting…', 'export.result': 'Result',
+    'export.item': 'Item', 'export.status': 'Status', 'export.detail': 'Detail', 'export.ok': 'Done', 'export.fail': 'Failed',
+    'export.done': 'Export completed', 'export.open': 'Open folder',
+    'set.title': 'Settings', 'set.group.general': 'General', 'set.group.engine': 'Engines', 'set.group.about': 'About',
+    'set.update': 'Software update', 'set.storage': 'Data & folders', 'set.decode': 'Parsing & decoding', 'set.asr': 'Speech recognition',
+    'set.about': 'About M-Ryuga', 'set.current': 'Current version', 'set.channel': 'Release channel: GitHub releases',
+    'set.check': 'Check for updates', 'set.checking': 'Checking…', 'set.upToDate': 'You are up to date',
+    'set.autoCheck': 'Check at startup', 'set.autoCheckDesc': 'At most once every 24 hours',
+    'set.ignored': 'Ignored version', 'set.ignoredDesc': 'no longer notified', 'set.unignore': 'Un-ignore',
+    'set.pending': 'Postponed', 'set.pendingDesc': 'An update reminder was postponed', 'set.clear': 'Clear',
+    'set.appData': 'App data', 'set.exports': 'Exports', 'set.cache': 'Cache', 'set.models': 'Models', 'set.open': 'Open',
+    'set.builtinDecode': 'Built-in decoding', 'set.extDecode': 'Extended decoding', 'set.liveDriver': 'Live capture driver',
+    'set.dtmf': 'DTMF detection', 'set.available': 'Available', 'set.onDemand': 'On demand', 'set.external': 'External',
+    'set.enabled': 'Enabled', 'set.engine': 'Recognition engine', 'set.model': 'Active model', 'set.modelMgr': 'Model management',
+    'set.modelMgrDesc': 'See recommended models, download links and setup steps on the Transcribe page',
+    'set.gotoAsr': 'Open', 'set.ready': 'Ready', 'set.missing': 'Missing', 'set.aboutDesc': 'VoIP capture & call quality diagnostics',
+    'set.localFirst': 'Local first', 'set.localFirstDesc': 'SIP / RTP are parsed on this machine; nothing is uploaded',
+    'set.flavors': 'Distribution', 'set.flavorsDesc': 'Installer and portable builds are feature-identical',
+    'set.shortcuts': 'Shortcuts', 'set.shortcutsDesc': 'Ctrl + = zoom in · Ctrl + - zoom out · Ctrl + 0 reset',
+    'live.title': 'Live capture', 'live.start': 'Start capture', 'live.stop': 'Stop capture',
+    'live.npcap': 'npcap', 'live.dumpcap': 'dumpcap', 'live.recheck': 'Re-check',
+    'live.env': 'Capture environment', 'live.ifaces': 'Interfaces (up to 8)',
+    'live.filter': 'BPF filter', 'live.autoStop': 'Auto stop (sec)', 'live.mode': 'Write mode',
+    'live.single': 'Single file', 'live.multi': 'Split files', 'live.ring': 'Ring buffer',
+    'live.running': 'Capturing', 'live.stopped': 'Stopped', 'live.packets': 'Packets', 'live.sip': 'SIP', 'live.rtp': 'RTP',
+    'live.calls': 'Calls', 'live.keys': 'Keys', 'live.tempSize': 'Temp size', 'live.liveCalls': 'Live calls',
+    'live.save': 'Save capture…', 'live.saveImport': 'Save & analyze', 'live.discard': 'Discard',
+    'live.hint': 'Data is written to a temp folder first; decide whether to keep it after stopping',
+    'asr.title': 'Speech recognition', 'asr.modelDir': 'Model folder', 'asr.pickModel': 'Choose model…',
+    'asr.open': 'Open model folder', 'asr.recommended': 'Recommended models', 'asr.detected': 'Detected models',
+    'asr.run': 'Start transcription', 'asr.running': 'Transcribing…', 'asr.result': 'Result', 'asr.select': 'Select a call',
+    'asr.merge': 'Merge', 'asr.split': 'Per direction', 'asr.needSetup': 'Offline engine or model not ready',
+    'set.language': 'Language', 'set.languageDesc': 'Applies immediately; default is English'
+  },
+  zh: {
+    'brand.sub': 'SIP / RTP 抓包分析',
+    'nav.calls': '通话分析', 'nav.compare': '抓包对照', 'nav.live': '实时抓包', 'nav.asr': '语音转写', 'nav.settings': '设置',
+    'btn.import': '导入抓包', 'search.placeholder': '搜索号码 / Call-ID / 状态',
+    'tabs.all': '全部文件', 'tabs.files': '文件', 'tabs.calls': '通话', 'tabs.msgs': '条信令', 'tabs.anomalies': '项异常',
+    'status.ready': '就绪', 'status.analyzing': '分析中', 'status.files': '文件', 'status.calls': '通话',
+    'status.truncated': '存在不完整抓包', 'status.tasks': '个任务',
+    'drop.title': '把抓包文件拖到窗口，或点击选择',
+    'drop.sub': '支持 .pcap / .pcapng / .cap · 可一次选多个 · 单文件最大 1 GiB',
+    'drop.drag': '释放以导入抓包', 'drop.dragSub': '支持一次拖入多个文件',
+    'list.all': '全部', 'list.issues': '仅看问题', 'list.matched': '匹配', 'list.abnormal': '异常',
+    'list.search': '号码 / Call-ID / IP', 'list.empty': '无匹配通话',
+    'list.durationUnknown': '未知时长', 'list.notEnded': '未结束', 'list.select': '从左侧选择一通通话',
+    'detail.start': '开始', 'detail.duration': '时长', 'detail.end': '结束', 'detail.codec': '编码', 'detail.messages': '报文',
+    'tab.overview': '通话概览', 'tab.ladder': '流序图', 'tab.messages': '报文', 'tab.audio': '双向试听', 'tab.export': '导出',
+    'sev.ok': '正常', 'sev.warn': '疑警', 'sev.error': '异常', 'sev.info': '关注',
+    'ov.file': '抓包文件', 'ov.call': '当前通话', 'ov.proto': '协议分布',
+    'ov.fileName': '文件名', 'ov.size': '文件大小', 'ov.packets': '报文总数', 'ov.first': '抓包起点', 'ov.last': '抓包终点',
+    'ov.span': '时间跨度', 'ov.state': '文件状态', 'ov.complete': '完整', 'ov.truncated': '抓包不完整',
+    'ov.caller': '主叫', 'ov.callee': '被叫', 'ov.start': '开始时间', 'ov.end': '结束方式', 'ov.duration': '通话时长',
+    'ov.codec': '编码', 'ov.sipMsgs': 'SIP 报文', 'ov.dtmf': 'DTMF 按键', 'ov.dtmfSeq': '按键序列', 'ov.media': '媒体流',
+    'ov.noSdp': '未协商（无 SDP）', 'ov.none': '无', 'ov.streams': '条', 'ov.rtpPkts': 'RTP 包',
+    'proto.sip': 'SIP 信令', 'proto.rtp': 'RTP 媒体', 'proto.other': '其他',
+    'diag.timeline': '通话时间线', 'diag.title': '诊断结论', 'diag.pass': '信令与媒体均未发现明显问题',
+    'diag.connect': '接通时间', 'diag.ring': '振铃时长', 'diag.endBy': '结束方', 'diag.endCause': 'Q.850',
+    'diag.media': '媒体流（RTP）', 'diag.dirA': '主叫方向 A → B', 'diag.dirB': '被叫方向 B → A',
+    'diag.noStream': '未捕获该方向 RTP', 'diag.packets': '包数', 'diag.lost': '丢失',
+    'diag.jitter': '抖动', 'diag.keys': 'DTMF 按键', 'diag.noKeys': '未检测到按键（2833 / INFO / in-band）',
+    'diag.decoding': '解码媒体中…',
+    'legend.request': '请求', 'legend.ok': '成功响应', 'legend.fail': '失败响应', 'legend.rtp': 'RTP 媒体', 'legend.dtmf': 'DTMF 按键',
+    'legend.hint': '点击 SIP 行查看报文原文 · 点击 RTP 行播放该方向音频',
+    'msg.source': '源', 'msg.dest': '目的', 'msg.copy': '复制原文', 'msg.copied': '已复制',
+    'msg.time': '时间', 'msg.channel': '通道', 'msg.duration': '时长',
+    'msg.dtmfTitle': 'DTMF 按键', 'msg.dtmfNote': '该按键来自媒体侧 DTMF 事件（非 SIP 信令），仅在报文列表中出现一行摘要。',
+    'msg.rtpTitle': 'RTP 媒体流', 'msg.rtpSpan': '跨度', 'msg.rtpHint': '点击该行即可自动切到「双向试听」并独听此方向。',
+    'msgs.filter': '过滤信令 / 按键',
+    'audio.play': '播放', 'audio.pause': '暂停', 'audio.solo': '独听', 'audio.mute': '静音', 'audio.zoom': '缩放',
+    'audio.caller': '主叫方向 A', 'audio.callee': '被叫方向 B', 'audio.seek': '拖动调整播放位置',
+    'audio.waveHint': '点击波形定位播放位置', 'audio.noMedia': '无 RTP 音频流',
+    'audio.decoding': '解码媒体中…（大文件较慢）', 'audio.unsupported': '已识别，暂不支持解码',
+    'export.title': '导出', 'export.items': '导出内容', 'export.pcapng': '原始关联报文（PCAPNG，本通话 SIP + RTP）',
+    'export.wav': '分方向 WAV（主叫 / 被叫 / 混合）', 'export.report': 'HTML 分析报告（自包含单文件）',
+    'export.privacy': '隐私遮蔽', 'export.maskUser': '遮蔽号码（保留后 4 位）', 'export.maskIp': '遮蔽 IP（保留前 2 段）',
+    'export.run': '选择目录并导出', 'export.running': '导出中…', 'export.result': '导出结果',
+    'export.item': '项目', 'export.status': '状态', 'export.detail': '详情', 'export.ok': '成功', 'export.fail': '失败',
+    'export.done': '导出完成', 'export.open': '打开目录',
+    'set.title': '设置', 'set.group.general': '通用', 'set.group.engine': '引擎', 'set.group.about': '关于',
+    'set.update': '软件更新', 'set.storage': '数据与目录', 'set.decode': '解析与解码', 'set.asr': '语音识别',
+    'set.about': '关于 M-Ryuga', 'set.current': '当前版本', 'set.channel': '发布渠道：GitHub 正式版',
+    'set.check': '检查更新', 'set.checking': '检查中…', 'set.upToDate': '已是最新版本',
+    'set.autoCheck': '启动时自动检查', 'set.autoCheckDesc': '每 24 小时最多查询一次',
+    'set.ignored': '已忽略版本', 'set.ignoredDesc': '不再提示', 'set.unignore': '取消忽略',
+    'set.pending': '稍后提醒', 'set.pendingDesc': '存在被推迟的更新提醒', 'set.clear': '清除提醒',
+    'set.appData': '应用数据', 'set.exports': '导出目录', 'set.cache': '缓存目录', 'set.models': '模型目录', 'set.open': '打开',
+    'set.builtinDecode': '内置音频解码', 'set.extDecode': '扩展解码', 'set.liveDriver': '实时抓包',
+    'set.dtmf': 'DTMF 识别', 'set.available': '可用', 'set.onDemand': '按需加载', 'set.external': '外部依赖',
+    'set.enabled': '已启用', 'set.engine': '识别引擎', 'set.model': '当前模型', 'set.modelMgr': '模型管理',
+    'set.modelMgrDesc': '在「语音转写」页查看推荐模型、下载链接与安装步骤',
+    'set.gotoAsr': '前往', 'set.ready': '就绪', 'set.missing': '缺失', 'set.aboutDesc': 'VoIP 抓包与通话质量诊断',
+    'set.localFirst': '本地优先', 'set.localFirstDesc': 'SIP / RTP 全部在本机解析，音频与抓包不上传',
+    'set.flavors': '发行形态', 'set.flavorsDesc': '安装版与便携版功能一致',
+    'set.shortcuts': '快捷键', 'set.shortcutsDesc': 'Ctrl + = 放大 · Ctrl + - 缩小 · Ctrl + 0 复位',
+    'live.title': '实时抓包', 'live.start': '开始抓包', 'live.stop': '停止抓包',
+    'live.npcap': 'npcap', 'live.dumpcap': 'dumpcap', 'live.recheck': '重新检测',
+    'live.env': '抓包环境', 'live.ifaces': '选择网卡（可多选，最多 8 张）',
+    'live.filter': '过滤（BPF）', 'live.autoStop': '自动停止（秒）', 'live.mode': '写出模式',
+    'live.single': '单文件', 'live.multi': '分卷', 'live.ring': '循环覆盖',
+    'live.running': '抓包中', 'live.stopped': '已停止', 'live.packets': '报文', 'live.sip': 'SIP 信令', 'live.rtp': 'RTP 包',
+    'live.calls': '通话', 'live.keys': '按键', 'live.tempSize': '临时文件', 'live.liveCalls': '实时通话',
+    'live.save': '保存抓包文件…', 'live.saveImport': '保存并导入分析', 'live.discard': '丢弃',
+    'live.hint': '数据先写入临时目录，停止后再决定是否保存',
+    'asr.title': '语音识别', 'asr.modelDir': '模型目录', 'asr.pickModel': '选择模型文件…',
+    'asr.open': '打开模型目录', 'asr.recommended': '推荐模型', 'asr.detected': '已检测到的模型',
+    'asr.run': '开始转写', 'asr.running': '识别中…', 'asr.result': '识别结果', 'asr.select': '选择通话',
+    'asr.merge': '合并识别', 'asr.split': '按方向分轨', 'asr.needSetup': '离线识别环境未就绪',
+    'set.language': '语言', 'set.languageDesc': '立即生效，默认英文'
+  }
+};
+
+let lang = 'en';
+try {
+  const saved = localStorage.getItem(STORE_KEY);
+  if (saved === 'zh' || saved === 'en') lang = saved;
+} catch { /* 忽略 */ }
+
+const listeners = new Set();
+
+export function getLang() { return lang; }
+
+export function setLang(next) {
+  if (!dict[next]) return;
+  lang = next;
+  try { localStorage.setItem(STORE_KEY, next); } catch { /* 忽略 */ }
+  document.documentElement.lang = next === 'zh' ? 'zh-CN' : 'en';
+  listeners.forEach(fn => fn(next));
+}
+
+/** 取词：{var} 占位替换；缺词回落到中文再回落到 key */
+export function t(key, vars) {
+  const s = dict[lang][key] ?? dict.zh[key] ?? key;
+  if (!vars) return s;
+  return s.replace(/\{(\w+)\}/g, (_, k) => (vars[k] ?? ''));
+}
+
+export const useI18n = () => {
+  const [, force] = useState(0);
+  useEffect(() => {
+    const fn = () => force(x => x + 1);
+    listeners.add(fn);
+    return () => listeners.delete(fn);
+  }, []);
+  return { t, lang };
+};

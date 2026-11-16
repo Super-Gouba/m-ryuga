@@ -1,0 +1,38 @@
+appId: com.mryuga.app
+productName: M-Ryuga
+copyright: Copyright © 2026 M-Ryuga Team
+directories:
+  output: release
+  buildResources: build
+files:
+  - dist/**/*
+  - src/main/**/*
+  - src/preload/**/*
+  - src/core/**/*
+  - build/icon.png
+  - build/icon.ico
+  - package.json
+asar: true
+electronLanguages:
+  - zh-CN
+  - en-US
+win:
+  icon: build/icon.ico
+  target:
+    - target: nsis
+      arch: [x64]
+    - target: portable
+      arch: [x64]
+  artifactName: ${productName}-${version}-${arch}-${env.BUILD_FLAVOR}.${ext}
+nsis:
+  oneClick: false
+  perMachine: false
+  allowToChangeInstallationDirectory: true
+  createDesktopShortcut: true
+  createStartMenuShortcut: true
+  shortcutName: M-Ryuga
+  installerIcon: build/icon.ico
+  uninstallerIcon: build/icon.ico
+  artifactName: ${productName}-Setup-${version}.${ext}
+portable:
+  artifactName: ${productName}-Portable-${version}.${ext}
