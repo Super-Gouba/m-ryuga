@@ -594,7 +594,7 @@ select.input { cursor: pointer; }
 .awave-name { display: flex; align-items: center; gap: 6px; font-size: 12.5px; font-weight: 600; color: var(--fg); }
 .awave-addr { font-size: 10.5px; color: var(--fg3); word-break: break-all; margin-top: 3px; }
 .awave-meta { display: flex; flex-wrap: wrap; gap: 3px 10px; font-size: 10.5px; color: var(--fg3); margin-top: 4px; }
-.awave { position: relative; min-width: 0; background: #fff; border: 1px solid var(--line); border-radius: 8px; overflow: hidden; cursor: crosshair; }
+.awave { position: relative; min-width: 0; background: linear-gradient(180deg, #fbfdff, #f1f5fa); border: 1px solid #e3eaf3; border-radius: 8px; overflow: hidden; cursor: crosshair; box-shadow: inset 0 1px 0 #fff; }
 .awave-hover { position: absolute; top: 0; bottom: 0; width: 1px; background: rgba(60,80,110,.35); pointer-events: none; }
 .awave-tip {
   position: absolute; top: 3px; font-size: 10px; font-family: var(--font-mono); color: var(--fg2);

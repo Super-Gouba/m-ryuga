@@ -225,10 +225,20 @@ function registerIpc(app, win) {
     { file: 'ggml-medium.bin', name: 'Whisper medium', size: '1.5 GB', note: '识别质量最高，占用大', url: 'https://huggingface.co/ggerganov/whisper.cpp/resolve/main/ggml-medium.bin' }
   ];
 
+  // whisper.cpp 官方 Windows 预编译包（官方 latest 常只有源码，固定到带二进制的 build tag）
+  const ASR_ENGINE = {
+    tag: 'b5454',
+    zip: 'whisper-bin-x64.zip',
+    url: 'https://github.com/ggerganov/whisper.cpp/releases/download/b5454/whisper-bin-x64.zip',
+    page: 'https://github.com/ggerganov/whisper.cpp/releases/tag/b5454'
+  };
+
   const asrRoot = () => path.join(app.getPath('userData'), 'models');
 
   const findAsrEngine = () => {
-    const names = ['whisper-cli.exe', 'main.exe', 'whisper.exe'];
+    const settings = readSettings();
+    if (settings.asrEnginePath && fs.existsSync(settings.asrEnginePath)) return settings.asrEnginePath;
+    const names = ['whisper-cli.exe', 'whisper-standalone.exe', 'main.exe', 'whisper.exe'];
     for (const n of names) {
       const local = path.join(asrRoot(), 'bin', n);
       if (fs.existsSync(local)) return local;
@@ -328,8 +338,91 @@ function registerIpc(app, win) {
       activeModel: active,
       ready: !!engine && !!active,
       recommended: ASR_RECOMMENDED,
-      binDir: path.join(dir, 'bin')
+      binDir: path.join(dir, 'bin'),
+      engineDownload: { tag: ASR_ENGINE.tag, page: ASR_ENGINE.page, size: '8.5 MB' }
     };
+  });
+
+  /* 下载官方 Windows 预编译引擎（whisper-cli.exe + 依赖 dll） */
+  const downloadTo = (url, dest, onProgress, redirects = 0) => new Promise((resolve, reject) => {
+    const https = require('https');
+    const req = https.get(url, { headers: { 'User-Agent': 'M-Ryuga' }, timeout: 30000 }, (res) => {
+      if (res.statusCode >= 300 && res.statusCode < 400 && res.headers.location && redirects < 6) {
+        res.resume();
+        const next = res.headers.location.startsWith('http') ? res.headers.location : `https://github.com${res.headers.location}`;
+        downloadTo(next, dest, onProgress, redirects + 1).then(resolve, reject);
+        return;
+      }
+      if (res.statusCode !== 200) { res.resume(); reject(new Error(`下载失败（HTTP ${res.statusCode}）`)); return; }
+      const total = Number(res.headers['content-length'] || 0);
+      let got = 0;
+      const out = fs.createWriteStream(dest);
+      res.on('data', c => { got += c.length; onProgress?.({ got, total, pct: total ? got / total : 0 }); });
+      res.on('error', reject);
+      out.on('error', reject);
+      out.on('finish', () => out.close(() => resolve(dest)));
+      res.pipe(out);
+    });
+    req.on('timeout', () => req.destroy(new Error('下载超时')));
+    req.on('error', reject);
+  });
+
+  const downloadWithRetry = async (url, dest, onProgress, times = 2) => {
+    let last;
+    for (let i = 0; i < times; i++) {
+      try { return await downloadTo(url, dest, onProgress); }
+      catch (e) { last = e; onProgress?.({ pct: 0, retry: i + 1 }); }
+    }
+    throw last;
+  };
+
+  ipcMain.handle('asr:pickEngine', async () => {
+    const res = await dialog.showOpenDialog(win, {
+      title: '选择 whisper.cpp 识别程序（whisper-cli.exe / main.exe）',
+      properties: ['openFile'],
+      filters: [{ name: '可执行文件', extensions: ['exe'] }]
+    });
+    if (res.canceled) return { ok: false };
+    const p = res.filePaths[0];
+    fs.writeFileSync(settingsFile, JSON.stringify({ ...readSettings(), asrEnginePath: p }, null, 2));
+    return { ok: true, path: p };
+  });
+
+  ipcMain.handle('asr:installEngine', async (e) => {
+    const tmp = path.join(app.getPath('temp'), 'mryuga-asr');
+    const binDir = path.join(asrRoot(), 'bin');
+    const zip = path.join(tmp, ASR_ENGINE.zip);
+    const xdir = path.join(tmp, 'extract');
+    try {
+      fs.mkdirSync(binDir, { recursive: true });
+      fs.mkdirSync(tmp, { recursive: true });
+      await downloadWithRetry(ASR_ENGINE.url, zip, p => { if (!e.sender.isDestroyed()) e.sender.send('asr:engine-progress', p); });
+      try { fs.unlinkSync(`${zip}:Zone.Identifier`); } catch { /* 无标记 */ }
+      fs.rmSync(xdir, { recursive: true, force: true });
+      fs.mkdirSync(xdir, { recursive: true });
+      const r = require('child_process').spawnSync('tar', ['-xf', zip, '-C', xdir], { windowsHide: true });
+      if (r.status !== 0) throw new Error('解压失败：' + String(r.stderr || '').slice(0, 200));
+      const found = [];
+      const walk = (d) => {
+        for (const ent of fs.readdirSync(d, { withFileTypes: true })) {
+          const p = path.join(d, ent.name);
+          if (ent.isDirectory()) walk(p);
+          else if (/^(whisper-cli|main)\.exe$/i.test(ent.name)) found.push(p);
+        }
+      };
+      walk(xdir);
+      const exe = found.find(p => /whisper-cli\.exe$/i.test(p)) || found[0];
+      if (!exe) throw new Error('压缩包中未找到 whisper-cli.exe / main.exe');
+      const srcDir = path.dirname(exe);
+      for (const ent of fs.readdirSync(srcDir, { withFileTypes: true })) {
+        if (ent.isFile() && /\.(exe|dll)$/i.test(ent.name)) fs.copyFileSync(path.join(srcDir, ent.name), path.join(binDir, ent.name));
+      }
+      const installed = path.join(binDir, path.basename(exe));
+      fs.writeFileSync(settingsFile, JSON.stringify({ ...readSettings(), asrEnginePath: installed }, null, 2));
+      return { ok: true, engine: installed };
+    } catch (err) {
+      return { ok: false, error: String(err.message || err) };
+    }
   });
 
   ipcMain.handle('asr:pickModel', async () => {
@@ -357,7 +450,7 @@ function registerIpc(app, win) {
       return {
         ok: false, code: 'engine',
         error: '未找到离线识别引擎（whisper-cli.exe）',
-        hint: '把 whisper.cpp 的 whisper-cli.exe 放到 models\\bin\\ 目录，或加入 PATH。可在设置页打开模型目录。'
+        hint: '在「语音转写」页点「下载 Windows 引擎」可自动安装官方预编译版（whisper-cli.exe + dll），也可手动选择程序文件。'
       };
     }
     const settings = readSettings();

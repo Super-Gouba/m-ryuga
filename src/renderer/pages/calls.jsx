@@ -1244,7 +1244,7 @@ function AudioWave({ waveform, marks = [], dtmf = [], firstUs, dur = 0, totalSec
     if (!cv) return;
     const dpr = window.devicePixelRatio || 2;
     const W = cv.clientWidth || 640, H = 104;
-    const LANE = 26; // 顶部按键轨道高度
+    const LANE = 28; // 顶部按键轨道高度
     cv.width = W * dpr; cv.height = H * dpr;
     const ctx = cv.getContext('2d');
     ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
@@ -1252,8 +1252,15 @@ function AudioWave({ waveform, marks = [], dtmf = [], firstUs, dur = 0, totalSec
     const span = Math.max(totalSec, 0.001);
     const xOf = sec => Math.max(0, Math.min(W, (sec / span) * W));
 
+    // 背景：柔和渐变 + 按键轨道底色，避免大片纯白
+    const bg = ctx.createLinearGradient(0, 0, 0, H);
+    bg.addColorStop(0, '#fbfdff');
+    bg.addColorStop(1, '#f1f5fa');
+    ctx.fillStyle = bg; ctx.fillRect(0, 0, W, H);
+    ctx.fillStyle = '#eef3f9'; ctx.fillRect(0, 0, W, LANE);
+
     // 时间网格
-    ctx.strokeStyle = '#e9eef5'; ctx.lineWidth = 1;
+    ctx.strokeStyle = '#e4ebf4'; ctx.lineWidth = 1;
     ctx.fillStyle = '#93a0b1';
     ctx.font = '10px "JetBrains Mono", Consolas, monospace';
     const step = axisStep(span);
@@ -1263,10 +1270,13 @@ function AudioWave({ waveform, marks = [], dtmf = [], firstUs, dur = 0, totalSec
       if (sec + step <= span + 1e-6 && xOf(sec) < W - 32) ctx.fillText(axisLabel(sec), x + 3, H - 3);
     }
     // 按键轨道分隔线
-    ctx.strokeStyle = '#eef2f7';
+    ctx.strokeStyle = '#dfe7f2';
     ctx.beginPath(); ctx.moveTo(0, LANE + 0.5); ctx.lineTo(W, LANE + 0.5); ctx.stroke();
 
-    // 静音区间（振幅接近 0 且持续 > 300ms）
+    const cy = LANE + (H - LANE) / 2;
+    const maxH = (H - LANE) * 0.44;
+
+    // 静音区间：中线上的细灰条，替代整块灰底
     if (waveform?.length) {
       let runStart = null;
       for (let i = 0; i <= waveform.length; i++) {
@@ -1275,8 +1285,8 @@ function AudioWave({ waveform, marks = [], dtmf = [], firstUs, dur = 0, totalSec
         if ((!quiet || i === waveform.length) && runStart !== null) {
           const s0 = runStart * 0.02, s1 = i * 0.02;
           if (s1 - s0 > 0.3) {
-            ctx.fillStyle = 'rgba(140,150,164,.09)';
-            ctx.fillRect(xOf(s0), LANE, Math.max(1, xOf(s1) - xOf(s0)), H - LANE);
+            ctx.fillStyle = 'rgba(148,163,184,.45)';
+            ctx.fillRect(xOf(s0), cy - 1, Math.max(1, xOf(s1) - xOf(s0)), 2);
           }
           runStart = null;
         }
@@ -1290,15 +1300,13 @@ function AudioWave({ waveform, marks = [], dtmf = [], firstUs, dur = 0, totalSec
       const gapMs = Math.min(Math.max(0, m.ms || 0), span * 1000);
       const x0 = xOf(sec);
       const x1 = xOf(sec + Math.max(0.02, gapMs / 1000));
-      ctx.fillStyle = 'rgba(214,120,40,.16)';
+      ctx.fillStyle = 'rgba(214,120,40,.12)';
       ctx.fillRect(x0, LANE, Math.max(2, x1 - x0), H - LANE);
-      ctx.strokeStyle = m.type === 'gap' ? 'rgba(190,90,30,.55)' : 'rgba(214,160,60,.6)';
+      ctx.strokeStyle = m.type === 'gap' ? 'rgba(190,90,30,.45)' : 'rgba(214,160,60,.5)';
       ctx.beginPath(); ctx.moveTo(x0 + 0.5, LANE); ctx.lineTo(x0 + 0.5, H); ctx.stroke();
     }
 
-    // DTMF 按键标记在绘制完振幅后叠加（见下方）
-
-    // 振幅包络（按像素列取峰值）
+    // 振幅：镜像平滑包络（填充 + 上沿描边），比逐像素柱状更整洁
     if (waveform?.length) {
       const cols = Math.max(1, Math.floor(xOf(dur || span)));
       const amps = new Float32Array(cols);
@@ -1306,16 +1314,26 @@ function AudioWave({ waveform, marks = [], dtmf = [], firstUs, dur = 0, totalSec
         const px = Math.min(cols - 1, Math.floor((i / waveform.length) * cols));
         if (waveform[i] > amps[px]) amps[px] = waveform[i];
       }
-      ctx.fillStyle = color; ctx.globalAlpha = 0.82;
+      const hOf = x => Math.max(0.6, amps[x] * maxH);
+      ctx.beginPath();
+      ctx.moveTo(0, cy);
+      for (let x = 0; x < cols; x++) ctx.lineTo(x, cy - hOf(x));
+      for (let x = cols - 1; x >= 0; x--) ctx.lineTo(x, cy + hOf(x));
+      ctx.closePath();
+      ctx.fillStyle = color; ctx.globalAlpha = 0.32; ctx.fill();
+      ctx.globalAlpha = 1;
+      ctx.beginPath();
       for (let x = 0; x < cols; x++) {
-        const h = Math.max(1, amps[x] * (H - LANE) * 0.88);
-        ctx.fillRect(x, LANE + (H - LANE - h) / 2, 1, h);
+        const y = cy - hOf(x);
+        if (x === 0) ctx.moveTo(x, y); else ctx.lineTo(x, y);
       }
+      ctx.strokeStyle = color; ctx.globalAlpha = 0.85; ctx.lineWidth = 1; ctx.stroke();
       ctx.globalAlpha = 1;
     }
 
-    ctx.strokeStyle = '#dde5ef';
-    ctx.beginPath(); ctx.moveTo(0, LANE + (H - LANE) / 2 + 0.5); ctx.lineTo(W, LANE + (H - LANE) / 2 + 0.5); ctx.stroke();
+    // 中线
+    ctx.strokeStyle = '#dbe4ef'; ctx.lineWidth = 1;
+    ctx.beginPath(); ctx.moveTo(0, cy + 0.5); ctx.lineTo(W, cy + 0.5); ctx.stroke();
 
     // DTMF 按键：独立轨道 + 真实时间虚线 + 防重叠横向排布
     let lastRight = -1;
@@ -1329,7 +1347,7 @@ function AudioWave({ waveform, marks = [], dtmf = [], firstUs, dur = 0, totalSec
       if (cx > W - 12) cx = W - 12;
       lastRight = cx + 11;
       ctx.save();
-      ctx.strokeStyle = 'rgba(190,140,40,.55)';
+      ctx.strokeStyle = 'rgba(190,140,40,.5)';
       ctx.lineWidth = 1;
       ctx.setLineDash([3, 3]);
       ctx.beginPath(); ctx.moveTo(tx + 0.5, LANE - 8); ctx.lineTo(tx + 0.5, H); ctx.stroke();
@@ -1339,13 +1357,13 @@ function AudioWave({ waveform, marks = [], dtmf = [], firstUs, dur = 0, totalSec
       }
       ctx.restore();
       ctx.beginPath();
-      if (ctx.roundRect) ctx.roundRect(cx - 10, 2, 20, 15, 7); else ctx.rect(cx - 10, 2, 20, 15);
-      ctx.fillStyle = '#fdf6e8'; ctx.fill();
-      ctx.strokeStyle = '#e0bd7f'; ctx.lineWidth = 1; ctx.stroke();
+      if (ctx.roundRect) ctx.roundRect(cx - 10, 3, 20, 15, 7); else ctx.rect(cx - 10, 3, 20, 15);
+      ctx.fillStyle = '#fffaf0'; ctx.fill();
+      ctx.strokeStyle = '#e2c48b'; ctx.lineWidth = 1; ctx.stroke();
       ctx.fillStyle = '#7a4e0a';
       ctx.font = 'bold 10.5px "JetBrains Mono", Consolas, monospace';
       ctx.textAlign = 'center';
-      ctx.fillText(String(d.digit), cx, 13);
+      ctx.fillText(String(d.digit), cx, 14);
       ctx.textAlign = 'start';
     });
 

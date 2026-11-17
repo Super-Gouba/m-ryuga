@@ -4,6 +4,21 @@ All notable changes to this project are documented in this file.
 The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and this project
 adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.0.9] — 2026-11-17
+
+### Added
+- **One-click ASR engine** — 语音转写 now downloads the official whisper.cpp Windows build (`b5454`,
+  `whisper-bin-x64.zip`, ~8.5 MB), extracts `whisper-cli.exe` and its DLLs into `models\bin`, and retries once
+  on network timeout. A manual "选择程序文件" picker and `whisper-standalone.exe` detection are also supported.
+
+### Changed
+- Audio waveform visuals: soft gradient panel instead of flat white, mirrored envelope fill with a smooth
+  contour, thin silence markers along the centre line, subtler grid and a taller DTMF lane.
+
+### Fixed
+- The old "下载 whisper.cpp" link pointed at a release that only ships source code; the engine is now pinned
+  to a build tag that actually contains Windows binaries.
+
 ## [1.0.8] — 2026-11-17
 
 ### Fixed
@@ -148,6 +163,7 @@ adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 - No audio in dual-channel playback for captures without SDP (direction slot collision).
 - Layout imbalance on very wide displays and lack of stacking on narrow windows.
 
+[1.0.9]: https://github.com/Super-Gouba/m-ryuga/releases/tag/v1.0.9
 [1.0.8]: https://github.com/Super-Gouba/m-ryuga/releases/tag/v1.0.8
 [1.0.7]: https://github.com/Super-Gouba/m-ryuga/releases/tag/v1.0.7
 [1.0.6]: https://github.com/Super-Gouba/m-ryuga/releases/tag/v1.0.6

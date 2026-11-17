@@ -14,9 +14,28 @@ function AsrPage() {
   const [q, setQ] = useState('');
   const [busy, setBusy] = useState(false);
   const [result, setResult] = useState(null);
+  const [engineBusy, setEngineBusy] = useState(false);
+  const [pct, setPct] = useState(0);
 
   const loadStatus = async () => setSt(await api.asrStatus().catch(() => null));
-  useEffect(() => { loadStatus(); }, []);
+  useEffect(() => {
+    loadStatus();
+    return api.on('asr:engine-progress', p => setPct(p?.pct || 0));
+  }, []);
+
+  const installEngine = async () => {
+    setEngineBusy(true); setPct(0);
+    try {
+      const r = await api.asrInstallEngine();
+      if (r.ok) { showToast('ok', '识别引擎已安装'); loadStatus(); }
+      else showToast('err', r.error || '引擎安装失败');
+    } finally { setEngineBusy(false); }
+  };
+
+  const pickEngine = async () => {
+    const r = await api.asrPickEngine();
+    if (r.ok) { showToast('ok', '已指定识别程序'); loadStatus(); }
+  };
 
   const pickModel = async () => {
     const r = await api.asrPickModel();
@@ -48,26 +67,42 @@ function AsrPage() {
 
             <div className="kvl" style={{ marginBottom: 12 }}>
               <b>识别引擎</b>
-              <span className="mono" style={{ wordBreak: 'break-all' }}>{st?.engine || '未找到 whisper-cli.exe'}</span>
+              <span className="mono" style={{ wordBreak: 'break-all' }}>{st?.engine || '未找到（可一键下载）'}</span>
               <b>当前模型</b>
               <span className="mono" style={{ wordBreak: 'break-all' }}>{st?.activeModel || '未选择'}</span>
               <b>模型目录</b>
               <span className="mono" style={{ wordBreak: 'break-all' }}>{st?.modelDir || '—'}</span>
             </div>
 
+            {engineBusy && (
+              <div style={{ marginBottom: 10 }}>
+                <div className="upd-prog"><i style={{ width: `${Math.round(pct * 100)}%` }} /></div>
+                <div style={{ fontSize: 11.5, color: 'var(--fg3)', marginTop: 4 }}>
+                  正在下载 whisper.cpp Windows 引擎 {Math.round(pct * 100)}%
+                </div>
+              </div>
+            )}
+
             <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
+              <button className="btn sm primary" onClick={installEngine} disabled={engineBusy}>
+                {engineBusy ? `下载中 ${Math.round(pct * 100)}%` : '下载 Windows 引擎'}
+              </button>
+              <button className="btn sm" onClick={pickEngine} disabled={engineBusy}>选择程序文件…</button>
               <button className="btn sm" onClick={() => api.asrOpenModelsDir()}>打开模型目录</button>
               <button className="btn sm" onClick={pickModel}>选择模型文件…</button>
-              <button className="btn sm ghost" onClick={() => api.updateOpenRelease('https://github.com/ggerganov/whisper.cpp/releases')}>下载 whisper.cpp</button>
+              <button className="btn sm ghost" onClick={() => api.updateOpenRelease(st?.engineDownload?.page || 'https://github.com/ggerganov/whisper.cpp/releases')}>官方 Releases ↗</button>
             </div>
 
             {!ready && (
               <div style={{ marginTop: 12, background: 'var(--warn-bg)', border: '1px solid #ecd9b6', borderRadius: 8, padding: '10px 12px', fontSize: 12.3, lineHeight: 1.95, color: 'var(--fg2)' }}>
                 <b>还没有可用的离线识别环境</b>，按下面 3 步准备（全部本机运行、音频不出机）：
                 <div style={{ marginTop: 6 }}>
-                  1. 下载 whisper.cpp Windows 发布包，把 <span className="mono">whisper-cli.exe</span> 及其依赖 dll 放进 <span className="mono">models\bin\</span><br />
-                  2. 下载下面的 GGML 模型（推荐 <span className="mono">ggml-small.bin</span>），放进 <span className="mono">models\</span><br />
+                  1. 点「下载 Windows 引擎」自动获取 whisper.cpp 官方预编译版（约 {st?.engineDownload?.size || '8.5 MB'}，解压到 <span className="mono">models\bin\</span>）；也可「选择程序文件」指定已有的 <span className="mono">whisper-cli.exe / main.exe</span><br />
+                  2. 下载下面的 GGML 模型（推荐 <span className="mono">ggml-small.bin</span>），放进 <span className="mono">models\</span> 或点「选择模型文件」<br />
                   3. 回到本页点「重新检测」，状态变为「就绪」即可开始转写
+                </div>
+                <div style={{ fontSize: 11.5, color: 'var(--fg3)', marginTop: 6 }}>
+                  说明：官方 GitHub 的 latest 发布有时只带源码；本页固定使用带 Windows 二进制的构建版本。
                 </div>
               </div>
             )}
