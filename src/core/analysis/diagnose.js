@@ -128,7 +128,14 @@ function diagnoseCall(call, analyzer) {
 
   // ---- 媒体问题证据 ----
   const streams = call.rtpStreams || [];
-  if (streams.length === 0 && d.tConnect) {
+  if (analyzer?.isTextLog) {
+    // 文本信令日志不含媒体：只用 SDP 协商结果填充编码，跳过媒体诊断
+    for (const ep of (call.sdp || [])) {
+      for (const c of (ep.codecs || [])) {
+        if (c && !/^\d+$/.test(String(c)) && !/telephone-event/i.test(String(c))) d.codecs.push(String(c).toUpperCase());
+      }
+    }
+  } else if (streams.length === 0 && d.tConnect) {
     d.mediaIssues.push({ sev: 'error', code: 'NO_RTP', text: '已接通但未见 RTP 媒体流', evidence: null });
   } else {
     for (const st of streams) {

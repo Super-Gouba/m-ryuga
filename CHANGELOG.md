@@ -4,6 +4,26 @@ All notable changes to this project are documented in this file.
 The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and this project
 adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.0.4] — 2026-11-17
+
+### Added
+- **Text SIP log analysis** — import `.txt` / `.log` call-flow exports (VOS `CALLFLOW|…` traces and plain SIP
+  text) alongside captures: timestamps, endpoints and Call-IDs are reconstructed, then the ladder,
+  message list, overview and HTML report work as usual. Text logs carry signaling only, so PCAPNG/WAV
+  export is disabled and media diagnostics are skipped.
+- **Audio analysis** (formerly "Audio") — summary statistics (duration, packets/loss, jitter, stalls
+  ≥200 ms, longest gap), per-direction tracks with seek/solo/mute, and a waveform with time axis,
+  amplitude envelope, silence bands, loss/gap markers and a playhead.
+- `npm test` now covers the text-log parser (26 assertions).
+
+### Changed
+- Call overview uses an aligned two-column grid: capture file / current call, protocol mix, timeline /
+  media, then a full-width diagnosis card.
+
+### Fixed
+- SIP text logs that omit the blank line before SDP now parse their body and negotiated codecs.
+- Command-line / open-file import accepts `.txt` / `.log`.
+
 ## [1.0.3] — 2026-11-16
 
 ### Added
@@ -73,6 +93,7 @@ adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 - No audio in dual-channel playback for captures without SDP (direction slot collision).
 - Layout imbalance on very wide displays and lack of stacking on narrow windows.
 
+[1.0.4]: https://github.com/Super-Gouba/m-ryuga/releases/tag/v1.0.4
 [1.0.3]: https://github.com/Super-Gouba/m-ryuga/releases/tag/v1.0.3
 [1.0.2]: https://github.com/Super-Gouba/m-ryuga/releases/tag/v1.0.2
 [1.0.1]: https://github.com/Super-Gouba/m-ryuga/releases/tag/v1.0.1

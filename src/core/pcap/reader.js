@@ -173,12 +173,17 @@ async function sniffFormat(filePath) {
   let fh;
   try {
     fh = await fs.promises.open(filePath, 'r');
-    const head = Buffer.alloc(4);
-    await fh.read(head, 0, 4, 0);
-    const le = head.readUInt32LE(0);
-    if (le === 0x0A0D0D0A) return { ok: true, format: 'pcapng' };
-    if (isPcapMagic(le)) return { ok: true, format: 'pcap' };
-    return { ok: false, error: '不是有效的 PCAP / PCAPNG 文件' };
+    const buf = Buffer.alloc(4096);
+    const { bytesRead } = await fh.read(buf, 0, 4096, 0);
+    if (bytesRead >= 4) {
+      const le = buf.readUInt32LE(0);
+      if (le === 0x0A0D0D0A) return { ok: true, format: 'pcapng' };
+      if (isPcapMagic(le)) return { ok: true, format: 'pcap' };
+    }
+    // 文本信令日志（VOS CALLFLOW / 纯 SIP 文本）
+    const { looksLikeTextSip } = require('../parse/textlog');
+    if (looksLikeTextSip(buf.slice(0, bytesRead).toString('utf8'))) return { ok: true, format: 'text' };
+    return { ok: false, error: '不是有效的 PCAP / PCAPNG 文件，也未检测到 SIP 文本日志' };
   } catch (e) {
     return { ok: false, error: String(e.message || e) };
   } finally { if (fh) await fh.close().catch(() => {}); }

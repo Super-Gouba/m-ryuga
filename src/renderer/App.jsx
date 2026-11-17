@@ -83,7 +83,7 @@ export function trunc(s, n = 42) { s = String(s ?? ''); return s.length > n ? s.
 /* ============================================================
    文件导入（按钮选择 + 拖拽共用）
    ============================================================ */
-const ACCEPT_EXT = /\.(pcap|pcapng|cap)$/i;
+const ACCEPT_EXT = /\.(pcap|pcapng|cap|txt|log)$/i;
 
 export function useImporter() {
   const { dispatch, showToast } = useStore();
@@ -98,14 +98,14 @@ export function useImporter() {
     try {
       for (const p of list) {
         const base = String(p).split(/[\\/]/).pop();
-        if (!ACCEPT_EXT.test(p)) { showToast('err', `跳过 ${base}：仅支持 .pcap / .pcapng / .cap`); failCount++; continue; }
+        if (!ACCEPT_EXT.test(p)) { showToast('err', t('import.unsupported', { file: base })); failCount++; continue; }
         const sniff = await api.sniff(p);
         if (!sniff.ok) { showToast('err', `${base}: ${sniff.error}`); failCount++; continue; }
         const res = await api.analyzeStart(p);
         if (res.ok) {
           dispatch({
             type: 'fileAdded',
-            file: { fileId: res.fileId, fileName: res.fileName || base, path: p, stats: res.stats, truncated: res.truncated, calls: res.calls }
+            file: { fileId: res.fileId, fileName: res.fileName || base, path: p, stats: res.stats, truncated: res.truncated, calls: res.calls, format: res.format }
           });
           okCount++;
         } else { showToast('err', `${base}: ${res.error}`); failCount++; }
@@ -116,8 +116,8 @@ export function useImporter() {
 
   const pick = async () => {
     const paths = await api.pickFiles({
-      title: '选择 PCAP / PCAPNG 抓包文件（可多选）',
-      filters: [{ name: '抓包文件', extensions: ['pcap', 'pcapng', 'cap'] }]
+      title: '选择 PCAP / PCAPNG 抓包或 SIP 文本日志（可多选）',
+      filters: [{ name: '抓包 / 信令日志', extensions: ['pcap', 'pcapng', 'cap', 'txt', 'log'] }]
     });
     await importPaths(paths);
   };
@@ -345,8 +345,8 @@ function FileTabs({ files, activeFile, calls, onPick, onRemove, onImport }) {
       </div>
       {files.map(f => (
         <div key={f.fileId} className="filetab" data-active={activeFile === f.fileId || undefined}
-          onClick={() => onPick(f.fileId)} title={f.path}>
-          <span className="ft-ico">◧</span>
+          onClick={() => onPick(f.fileId)} title={`${f.path}${f.format === 'text' ? '（文本信令日志）' : ''}`}>
+          <span className="ft-ico">{f.format === 'text' ? '≡' : '◧'}</span>
           <span className="ft-name">{f.fileName}</span>
           <button className="ft-close" title={t('tabs.closeFile') || 'Close'}
             onClick={e => { e.stopPropagation(); onRemove(f.fileId); }}>×</button>

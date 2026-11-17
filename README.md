@@ -22,8 +22,10 @@ Everything runs on your machine. No accounts, no telemetry, no cloud processing.
 | Area | What you get |
 | --- | --- |
 | **Capture support** | PCAP / PCAPNG / CAP, multi-file import (dialog, drag-and-drop, or drop onto the executable), files up to 1 GiB |
+| **Text SIP logs** | Import `.txt` / `.log` call-flow traces (VOS `CALLFLOW` exports, plain SIP text): timestamps, endpoints and Call-IDs are rebuilt into calls with ladder, messages and diagnosis |
 | **SIP analysis** | Request/response correlation by `Call-ID`, ladder diagram, raw message view with syntax highlighting, search & filters |
 | **Media analysis** | RTP stream reconstruction, per-direction PCM/WAV extraction, waveforms, packet loss, jitter, out-of-order and duplicate counters |
+| **Audio analysis** | Per-direction tracks with seek / solo / mute, waveform with time axis, silence bands, loss and gap markers, plus duration, loss, jitter and stall statistics |
 | **DTMF detection** | Three independent channels — RFC 2833/4733, SIP `INFO`, and in-band audio detection — merged and de-duplicated |
 | **Call overview** | Capture basics, protocol mix, call summary, DTMF key sequence, diagnosis and media statistics in one tab |
 | **Live capture** | npcap/dumpcap integration, multi-interface, BPF filters, ring/split modes, real-time call view, **save-or-discard on stop** |
@@ -50,7 +52,7 @@ Windows 10/11 x64. Live capture additionally requires [npcap](https://npcap.com/
 
 ## Quick start
 
-1. Launch M-Ryuga and drop a `pcap` file anywhere in the window.
+1. Launch M-Ryuga and drop a `pcap` / `pcapng` file — or a `.txt` SIP log — anywhere in the window.
 2. Pick a call in the left list — the ladder diagram opens automatically.
 3. Click a SIP row to read the original message; click an **RTP** row to jump to audio and solo that direction.
 4. Open **Call overview** for capture basics, DTMF key sequence, diagnosis and media summary.

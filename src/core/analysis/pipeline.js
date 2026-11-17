@@ -8,10 +8,20 @@ const { diagnoseCall, callSummary } = require('./diagnose');
 const { assembleStream, encodeWav } = require('../media/assembler');
 const { extract2833, extractSipInfoDtmf, detectInbandDtmf, mergeDtmf } = require('../media/dtmf');
 const { buildLadder, msgClass } = require('./ladder');
+const { looksLikeTextSip, parseTextLog } = require('../parse/textlog');
 const fs = require('fs');
 const path = require('path');
 
 const MAX_FILE = 1024 * 1024 * 1024; // 1 GiB
+
+async function readHead(filePath, n = 4096) {
+  const fh = await fs.promises.open(filePath, 'r');
+  try {
+    const buf = Buffer.alloc(n);
+    const { bytesRead } = await fh.read(buf, 0, n, 0);
+    return buf.slice(0, bytesRead).toString('utf8');
+  } finally { await fh.close().catch(() => {}); }
+}
 
 /**
  * 阶段一：快速分析（通话 + SIP + RTP 概览）。
@@ -20,6 +30,9 @@ const MAX_FILE = 1024 * 1024 * 1024; // 1 GiB
 async function analyzeFile(filePath, fileId, onProgress, signal) {
   const stat = await fs.promises.stat(filePath);
   if (stat.size > MAX_FILE) throw new Error(`文件超过 1 GiB 上限（${(stat.size / 1048576).toFixed(0)} MiB）`);
+  // 文本信令日志（VOS CALLFLOW / 纯 SIP 文本）走独立解析路径
+  const head = await readHead(filePath);
+  if (looksLikeTextSip(head)) return analyzeTextLog(filePath, fileId, onProgress, signal, stat);
   const analyzer = new CallAnalyzer(fileId);
   let lastPct = -1;
   let abortedMidway = false;
@@ -56,6 +69,7 @@ async function analyzeFile(filePath, fileId, onProgress, signal) {
   return {
     fileId,
     filePath,
+    format: 'pcap',
     truncated: !!analyzer.truncated,
     stats: analyzer.stats,
     calls: calls.map(c => ({ id: c.id, callId: c.callId, summary: c.summary, diag: c.diag })),
@@ -67,6 +81,52 @@ async function analyzeFile(filePath, fileId, onProgress, signal) {
       eventPt: st.eventPt, rtpmaps: st.rtpmaps,
       firstUs: st.firstUs, lastUs: st.lastUs
     })),
+    sdpEndpoints: analyzer.sdpEndpoints
+  };
+}
+
+/**
+ * 文本信令日志分析：CALLFLOW / 纯 SIP 文本 → 合成 SIP 消息喂给同一套聚合与体检。
+ * 无 RTP，因此不产出媒体流；诊断跳过媒体项。
+ */
+async function analyzeTextLog(filePath, fileId, onProgress, signal, stat) {
+  onProgress?.({ stage: 'parse', pct: 10, detail: '解析文本信令日志' });
+  const { blocks, size } = await parseTextLog(filePath);
+  if (!blocks.length) throw new Error('文本中未找到 SIP 报文');
+  const analyzer = new CallAnalyzer(fileId);
+  analyzer.isTextLog = true;
+  for (let i = 0; i < blocks.length; i++) {
+    if (signal?.aborted) break;
+    const b = blocks[i];
+    analyzer.feed(b.tsUs, {
+      proto: 'UDP', srcIp: b.srcIp, sport: b.sport, dstIp: b.dstIp, dport: b.dport,
+      payload: Buffer.from(b.text, 'latin1')
+    }, { off: 0, ifaceId: null });
+    if (i % 200 === 0) {
+      onProgress?.({ stage: 'parse', pct: 10 + Math.round((i / blocks.length) * 80), detail: `已解析 ${i + 1} 条信令` });
+    }
+  }
+  analyzer.stats.bytes = stat?.size ?? size;
+  analyzer.stats.otherPkts = 0;
+
+  onProgress?.({ stage: 'aggregate', pct: 99, detail: '聚合通话' });
+  const callsRaw = analyzer.finalize();
+  const calls = callsRaw.map(c => {
+    const d = diagnoseCall(c, analyzer);
+    return { id: `${fileId}:${sanitize(d.callId)}`, callId: d.callId, fileId, summary: callSummary(d), diag: d, raw: c };
+  }).sort((a, b) => a.summary.tStart - b.summary.tStart);
+
+  onProgress?.({ stage: 'done', pct: 100, detail: `${calls.length} 通通话` });
+  return {
+    fileId,
+    filePath,
+    format: 'text',
+    isTextLog: true,
+    truncated: false,
+    stats: analyzer.stats,
+    calls: calls.map(c => ({ id: c.id, callId: c.callId, summary: c.summary, diag: c.diag })),
+    sipMsgs: analyzer.sipMsgs,
+    rtpStreams: [],
     sdpEndpoints: analyzer.sdpEndpoints
   };
 }
@@ -331,4 +391,4 @@ function callLadder(analyzed, callId) {
 
 function sanitize(s) { return String(s).replace(/[^a-zA-Z0-9_-]/g, '_').slice(0, 64); }
 
-module.exports = { analyzeFile, analyzeMedia, callLadder, scanCallDtmf, MAX_FILE };
+module.exports = { analyzeFile, analyzeTextLog, analyzeMedia, callLadder, scanCallDtmf, MAX_FILE };

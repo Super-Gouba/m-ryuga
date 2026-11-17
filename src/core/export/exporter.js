@@ -31,6 +31,9 @@ async function runExport(analyzed, callId, items, opts, onItem, signal) {
     if (signal?.aborted) break;
     try {
       let file = null;
+      if (analyzed.isTextLog && (item.type === 'pcapng' || item.type === 'wav')) {
+        throw new Error('文本信令日志不含原始报文 / 媒体，仅支持导出 HTML 报告');
+      }
       if (item.type === 'pcapng') file = await exportPcapng(analyzed, callId, item.outPath, signal);
       else if (item.type === 'wav') file = await exportWavs(analyzed, callId, item.outPath, opts, signal);
       else if (item.type === 'report') file = await exportReport(analyzed, callId, item.outPath, opts, signal);

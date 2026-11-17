@@ -68,8 +68,8 @@ function registerIpc(app, win) {
       result.fileName = path.basename(filePath);
       sessions.set(fileId, result);
       finishTask(id, 'done');
-      send('task:done', { id, result: { fileId, calls: result.calls, stats: result.stats, truncated: result.truncated, fileName: result.fileName } });
-      return { ok: true, fileId, taskId: id, calls: result.calls, stats: result.stats, truncated: result.truncated, fileName: result.fileName };
+      send('task:done', { id, result: { fileId, calls: result.calls, stats: result.stats, truncated: result.truncated, fileName: result.fileName, format: result.format } });
+      return { ok: true, fileId, taskId: id, calls: result.calls, stats: result.stats, truncated: result.truncated, fileName: result.fileName, format: result.format };
     } catch (e) {
       finishTask(id, 'error');
       send('task:error', { id, error: String(e.message || e) });

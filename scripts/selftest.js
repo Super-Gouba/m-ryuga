@@ -235,6 +235,34 @@ console.log(`合成抓包：${pkts.length} 包 → ${pcapFile}`);
   ok(results.every(r => r.ok), `导出全部成功 ${results.map(r => r.type).join('/')}`);
   ok(fs.existsSync(path.join(outDir, 'r.html')), `HTML 报告存在`);
 
+  console.log('\n[9] 文本信令日志');
+  const { parseSipTextLog } = require('../src/core/parse/textlog');
+  const logText = [
+    'CALLFLOW|2026-11-17 10:24:42.426|EP1->SERVER|1.2.3.4:5060|INVITE|5.6.7.8:5060|',
+    'INVITE sip:200@5.6.7.8:5060 SIP/2.0',
+    'Via: SIP/2.0/UDP 1.2.3.4:5060;branch=z9hG4bK1',
+    'From: <sip:100@1.2.3.4>;tag=a',
+    'To: <sip:200@5.6.7.8>',
+    'Call-ID: log-1',
+    'CSeq: 1 INVITE',
+    'Content-Type: application/sdp',
+    'Content-Length: 0',
+    'v=0',
+    'm=audio 10000 RTP/AVP 8',
+    'CALLFLOW|2026-11-17 10:24:42.427|SERVER->EP1|5.6.7.8:5060|100 Trying|1.2.3.4:5060|',
+    'SIP/2.0 100 Trying',
+    'Via: SIP/2.0/UDP 1.2.3.4:5060;branch=z9hG4bK1',
+    'From: <sip:100@1.2.3.4>;tag=a',
+    'To: <sip:200@5.6.7.8>',
+    'Call-ID: log-1',
+    'CSeq: 1 INVITE',
+    'Content-Length: 0'
+  ].join('\n');
+  const logBlocks = parseSipTextLog(logText);
+  ok(logBlocks.length === 2, `文本日志解析 ${logBlocks.length} 条报文`);
+  ok(logBlocks[0]?.srcIp === '1.2.3.4' && logBlocks[0]?.dport === 5060, 'CALLFLOW 收发地址解析');
+  ok(/INVITE sip:200@/.test(logBlocks[0]?.text || ''), '请求行与无空行 SDP 保留');
+
   console.log(`\n========== 结果：${pass} 通过 / ${fail} 失败 ==========`);
   process.exit(fail ? 1 : 0);
 })().catch(e => { console.error('FATAL', e); process.exit(1); });

@@ -28,8 +28,8 @@ let closeAction = 'ask'; // ask | tray | exit（用户记忆的选择）
 let psBlockerId = null;
 
 // ---- 单实例 ----
-// 支持把 .pcap 拖到 exe 图标 / 命令行带文件启动
-const PCAP_EXT = /\.(pcap|pcapng|cap)$/i;
+// 支持把 .pcap / 文本信令日志拖到 exe 图标 / 命令行带文件启动
+const PCAP_EXT = /\.(pcap|pcapng|cap|txt|log)$/i;
 function argvPcaps(argv) {
   return (argv || []).filter(a => typeof a === 'string' && PCAP_EXT.test(a) && fs.existsSync(a));
 }

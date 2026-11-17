@@ -173,7 +173,7 @@ function CallDetail({ sel }) {
             )
             : <Loading />)}
           {tab === 'msgs' && (msgs ? <MsgsTab data={msgs} rows={rows} pick={pick} onPick={setPick} /> : <Loading />)}
-          {tab === 'audio' && <AudioTab sel={sel} soloKey={audioSoloKey} />}
+          {tab === 'audio' && <AudioTab sel={sel} soloKey={audioSoloKey} call={call} />}
           {tab === 'export' && <ExportTab sel={sel} />}
         </div>
         {splitTab && msgs && !narrow && (
@@ -238,7 +238,7 @@ function OverviewTab({ call, msgs, sel }) {
 
   return (
     <div className="detail-scroll">
-      <div className="diag-grid">
+      <div className="ov-grid">
         <div className="card">
           <div className="card-title">{t('ov.file')}</div>
           <div className="kvl">
@@ -282,7 +282,7 @@ function OverviewTab({ call, msgs, sel }) {
         </div>
       </div>
 
-      <div className="card" style={{ marginTop: 12 }}>
+      <div className="card ov-full">
         <div className="card-title">{t('ov.proto')}</div>
         <div style={{ display: 'flex', height: 12, borderRadius: 6, overflow: 'hidden', background: 'var(--bg4)' }}>
           {proto.map(([label, n, color]) => (
@@ -874,59 +874,55 @@ function CheckTab({ call, sel }) {
   ];
 
   return (
-    <div style={{ marginTop: 12 }}>
-      <div className="diag-grid">
-        <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
-          <div className="card">
-            <div className="card-title">{t('diag.timeline')}</div>
-            <div className="kvl">
-              <b>{t('ov.start')}</b><span className="mono">{fmtTime(s.tStart)}</span>
-              <b>{t('diag.connect')}</b><span className="mono">{s.tConnect ? fmtTime(s.tConnect) : '—'}</span>
-              <b>{t('ov.last')}</b><span className="mono">{s.tEnd ? fmtTime(s.tEnd) : '—'}</span>
-              <b>{t('diag.ring')}</b><span className="mono">{s.ringingMs ? (s.ringingMs / 1000).toFixed(1) + 's' : '—'}</span>
-              <b>{t('ov.duration')}</b><span className="mono">{s.connDurationSec != null ? fmtDur(s.connDurationSec) : t('list.durationUnknown')}</span>
-              <b>{t('ov.end')}</b>
-              <span>{s.endStatus ? `SIP ${s.endStatus} ${s.endReasonText || ''}` : s.ended ? 'BYE' : '—'}</span>
-              <b>{t('diag.endBy')}</b><span>{s.endByUser ? `${s.endBy === 'A' ? t('ov.caller') : t('ov.callee')} ${trunc(s.endByUser, 16)}` : '—'}</span>
-              {s.endCause && <><b>{t('diag.endCause')}</b><span>{s.endCause} — {s.endCauseText}</span></>}
-              <b>{t('ov.codec')}</b><span>{s.codecs?.join(', ') || '—'}</span>
-              <b>{t('ov.sipMsgs')}</b><span className="mono">{s.msgsCount ?? '—'}</span>
-            </div>
-          </div>
-
-          <div className="card">
-            <div className="card-title">{t('diag.title')}</div>
-            {issues.length === 0
-              ? <div style={{ display: 'flex', alignItems: 'center', gap: 8, fontSize: 13 }}><span className="badge ok">{t('sev.ok')}</span>{t('diag.pass')}</div>
-              : (
-                <div style={{ display: 'flex', flexDirection: 'column', gap: 7 }}>
-                  {issues.map((i, k) => (
-                    <div key={k} className="issue">
-                      <span className={`badge ${i.sev === 'error' ? 'err' : i.sev === 'warn' ? 'warn' : 'info'}`}>{i.cat}</span>
-                      <div style={{ flex: 1 }}>
-                        <div style={{ fontWeight: 600 }}>{i.text}</div>
-                        {i.evidence && (
-                          <div className="mono" style={{ color: 'var(--fg3)', fontSize: 11, marginTop: 2, wordBreak: 'break-all' }}>
-                            {typeof i.evidence === 'string' ? i.evidence : JSON.stringify(i.evidence)}
-                          </div>
-                        )}
-                      </div>
-                      {i.code && <span className="badge mut mono">{i.code}</span>}
-                    </div>
-                  ))}
-                </div>
-              )}
-          </div>
-        </div>
-
-        <div className="card">
-          <div className="card-title">{t('diag.media')}</div>
-          {!media && !mediaErr && <div className="empty" style={{ padding: 20 }}><div className="pulsing">{t('diag.decoding')}</div></div>}
-          {mediaErr && <div style={{ color: 'var(--red)', fontSize: 12.5 }}>{mediaErr}</div>}
-          {media && <MediaOverview media={media} />}
+    <>
+      <div className="card">
+        <div className="card-title">{t('diag.timeline')}</div>
+        <div className="kvl">
+          <b>{t('ov.start')}</b><span className="mono">{fmtTime(s.tStart)}</span>
+          <b>{t('diag.connect')}</b><span className="mono">{s.tConnect ? fmtTime(s.tConnect) : '—'}</span>
+          <b>{t('ov.last')}</b><span className="mono">{s.tEnd ? fmtTime(s.tEnd) : '—'}</span>
+          <b>{t('diag.ring')}</b><span className="mono">{s.ringingMs ? (s.ringingMs / 1000).toFixed(1) + 's' : '—'}</span>
+          <b>{t('ov.duration')}</b><span className="mono">{s.connDurationSec != null ? fmtDur(s.connDurationSec) : t('list.durationUnknown')}</span>
+          <b>{t('ov.end')}</b>
+          <span>{s.endStatus ? `SIP ${s.endStatus} ${s.endReasonText || ''}` : s.ended ? 'BYE' : '—'}</span>
+          <b>{t('diag.endBy')}</b><span>{s.endByUser ? `${s.endBy === 'A' ? t('ov.caller') : t('ov.callee')} ${trunc(s.endByUser, 16)}` : '—'}</span>
+          {s.endCause && <><b>{t('diag.endCause')}</b><span>{s.endCause} — {s.endCauseText}</span></>}
+          <b>{t('ov.codec')}</b><span>{s.codecs?.join(', ') || '—'}</span>
+          <b>{t('ov.sipMsgs')}</b><span className="mono">{s.msgsCount ?? '—'}</span>
         </div>
       </div>
-    </div>
+
+      <div className="card">
+        <div className="card-title">{t('diag.media')}</div>
+        {!media && !mediaErr && <div className="empty" style={{ padding: 20 }}><div className="pulsing">{t('diag.decoding')}</div></div>}
+        {mediaErr && <div style={{ color: 'var(--red)', fontSize: 12.5 }}>{mediaErr}</div>}
+        {media && <MediaOverview media={media} />}
+      </div>
+
+      <div className="card ov-full">
+        <div className="card-title">{t('diag.title')}</div>
+        {issues.length === 0
+          ? <div style={{ display: 'flex', alignItems: 'center', gap: 8, fontSize: 13 }}><span className="badge ok">{t('sev.ok')}</span>{t('diag.pass')}</div>
+          : (
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(340px, 1fr))', gap: 7 }}>
+              {issues.map((i, k) => (
+                <div key={k} className="issue">
+                  <span className={`badge ${i.sev === 'error' ? 'err' : i.sev === 'warn' ? 'warn' : 'info'}`}>{i.cat}</span>
+                  <div style={{ flex: 1 }}>
+                    <div style={{ fontWeight: 600 }}>{i.text}</div>
+                    {i.evidence && (
+                      <div className="mono" style={{ color: 'var(--fg3)', fontSize: 11, marginTop: 2, wordBreak: 'break-all' }}>
+                        {typeof i.evidence === 'string' ? i.evidence : JSON.stringify(i.evidence)}
+                      </div>
+                    )}
+                  </div>
+                  {i.code && <span className="badge mut mono">{i.code}</span>}
+                </div>
+              ))}
+            </div>
+          )}
+      </div>
+    </>
   );
 }
 
@@ -992,9 +988,9 @@ function MiniWave({ waveform, color }) {
 }
 
 /* ============================================================
-   双向试听
+   音频分析：方向统计 + 音轨 + 波形 / 丢包断流标记
    ============================================================ */
-function AudioTab({ sel, soloKey }) {
+function AudioTab({ sel, soloKey, call }) {
   const [media, setMedia] = useState(null);
   const [loading, setLoading] = useState(true);
   const [err, setErr] = useState(null);
@@ -1006,13 +1002,21 @@ function AudioTab({ sel, soloKey }) {
       .finally(() => setLoading(false));
   }, [sel]);
 
-  if (loading) return <div className="empty" style={{ flex: 1 }}><div className="pulsing">解码媒体中…（大文件较慢）</div></div>;
+  if (loading) return <div className="empty" style={{ flex: 1 }}><div className="pulsing">{t('audio.decoding')}</div></div>;
   if (err) return <div className="empty" style={{ flex: 1 }}>{err}</div>;
-  if (!media) return <div className="empty" style={{ flex: 1 }}>无媒体数据</div>;
-  return <div className="detail-scroll"><WavePlayer media={media} soloKey={soloKey} /></div>;
+  if (!media?.streams?.a && !media?.streams?.b) {
+    return (
+      <div className="empty" style={{ flex: 1 }}>
+        <div className="ico">◍</div>
+        <div style={{ fontWeight: 600, color: 'var(--fg2)' }}>{t('audio.noMedia')}</div>
+        <div style={{ fontSize: 12.5, maxWidth: 440, lineHeight: 1.8 }}>{t('audio.noMediaDesc')}</div>
+      </div>
+    );
+  }
+  return <div className="detail-scroll"><AudioAnalysis media={media} soloKey={soloKey} call={call} /></div>;
 }
 
-function WavePlayer({ media, soloKey }) {
+function AudioAnalysis({ media, soloKey, call }) {
   const A = media.streams?.a, B = media.streams?.b;
   const initSolo = soloKey ? (A?.key === soloKey ? 'a' : B?.key === soloKey ? 'b' : null) : null;
   const [solo, setSolo] = useState(initSolo);
@@ -1020,14 +1024,29 @@ function WavePlayer({ media, soloKey }) {
   useEffect(() => { if (soloKey) setSolo(initSolo); }, [soloKey]);
   const [mute, setMute] = useState({});
   const [rate, setRate] = useState(1);
-  const [zoom, setZoom] = useState(1);
   const [cur, setCur] = useState(0);
   const [playing, setPlaying] = useState(false);
   const nodesRef = useRef(null);
 
-  const totalSec = useMemo(() => {
-    const durs = [A?.pcm ? A.pcm.byteLength / 2 / A.sampleRate : 0, B?.pcm ? B.pcm.byteLength / 2 / B.sampleRate : 0];
-    return Math.max(...durs, 0);
+  const tracks = [['a', A], ['b', B]].filter(([, st]) => st);
+  const colors = { a: '#2563eb', b: '#7c3aed' };
+
+  const totalSec = useMemo(
+    () => Math.max(0.01, ...tracks.map(([, st]) => (st?.pcm ? st.pcm.byteLength / 2 / st.sampleRate : 0))),
+    [media]
+  );
+
+  const stats = useMemo(() => {
+    const sts = tracks.map(([, s]) => s);
+    const packets = sts.reduce((n, s) => n + (s.packets || 0), 0);
+    const lost = sts.reduce((n, s) => n + (s.lost || 0), 0);
+    const jitter = Math.max(0, ...sts.map(s => s.jitterMs || 0));
+    const marks = [];
+    for (const [slot, s] of tracks) for (const m of (s.marks || [])) marks.push({ ...m, slot });
+    const stalls = marks.filter(m => (m.ms || 0) >= 200);
+    const longest = marks.reduce((n, m) => Math.max(n, m.ms || 0), 0);
+    const totalPkts = packets + lost;
+    return { packets, lost, lostPct: totalPkts ? (lost / totalPkts) * 100 : 0, jitter, stalls: stalls.length, longest, marks };
   }, [media]);
 
   const buildAudio = async () => {
@@ -1095,46 +1114,105 @@ function WavePlayer({ media, soloKey }) {
   }, [playing, rate, totalSec]);
   useEffect(() => { if (playing && cur >= totalSec) { pause(); setCur(0); } }, [cur, playing]);
 
-  if (!A && !B) return <div className="empty">无 RTP 音频流</div>;
-
   return (
-    <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
-      <div className="card" style={{ display: 'flex', alignItems: 'center', gap: 10, flexWrap: 'wrap' }}>
-        <button className="btn primary" onClick={() => playing ? pause() : play()}>{playing ? `⏸ ${t('audio.pause')}` : `▶ ${t('audio.play')}`}</button>
-        <span className="mono" style={{ fontSize: 12.5, minWidth: 108 }}>{fmtClock(cur)} / {fmtClock(totalSec)}</span>
-        <input
-          type="range" min={0} max={Math.max(totalSec, 0.01)} step={0.01} value={cur}
-          onChange={e => seekTo(+e.target.value)}
-          style={{ flex: 1, minWidth: 160, accentColor: 'var(--accent)' }}
-          title={t('audio.seek')}
-        />
-        <select className="input" value={rate} onChange={e => setRate(+e.target.value)} style={{ width: 78 }}>
-          {[0.5, 0.75, 1, 1.25, 1.5, 2].map(r => <option key={r} value={r}>{r}×</option>)}
-        </select>
-        <span style={{ fontSize: 12, color: 'var(--fg3)' }}>{t('audio.zoom')}</span>
-        <input type="range" min={1} max={8} step={1} value={zoom} onChange={e => setZoom(+e.target.value)}
-          style={{ width: 90, accentColor: 'var(--accent)' }} />
-        <div style={{ flex: 1 }} />
-        <span style={{ fontSize: 11.5, color: 'var(--fg3)' }}>{t('audio.waveHint')}</span>
+    <div className="audio-shell">
+      <div className="card">
+        <div className="audio-head">
+          <div style={{ minWidth: 0 }}>
+            <div className="audio-route">
+              {call?.summary?.fromUser || '—'} <span>→</span> {call?.summary?.toUser || '—'}
+            </div>
+            <div className="audio-sub mono" title={call?.callId}>Call-ID {trunc(call?.callId || '—', 56)}</div>
+          </div>
+          <div style={{ flex: 1 }} />
+          <div className="audio-sub mono">{t('detail.start')} {fmtTime(call?.summary?.tStart)}</div>
+        </div>
+        <div className="audio-stats">
+          <Stat label={t('audio.total')} value={`${totalSec.toFixed(2)} s`} />
+          <Stat label={t('audio.received')} value={stats.packets.toLocaleString()} sub={`${t('diag.lost')} ${stats.lost} (${stats.lostPct.toFixed(1)}%)`} />
+          <Stat label={t('diag.jitter')} value={`${stats.jitter.toFixed(1)} ms`} />
+          <Stat label={t('audio.stalls')} value={String(stats.stalls)} sub="≥ 200 ms" />
+          <Stat label={t('audio.maxGap')} value={`${Math.round(stats.longest)} ms`} />
+        </div>
       </div>
 
-      {['a', 'b'].map(slot => {
-        const st = slot === 'a' ? A : B;
-        if (!st) return null;
-        return (
-          <div key={slot} className="card" style={{ borderLeft: `3px solid ${slot === 'a' ? 'var(--blue)' : 'var(--violet)'}` }}>
-            <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 8 }}>
-              <b style={{ fontSize: 12.5 }}>{slot === 'a' ? t('audio.caller') : t('audio.callee')}</b>
+      <div className="card">
+        <div className="card-title">{t('audio.streamInfo')}</div>
+        <div className="atracks">
+          {tracks.map(([slot, st]) => (
+            <div key={slot} className="atrack">
+              <span className="adot" style={{ background: colors[slot] }} />
+              <b className="aname">{slot === 'a' ? t('ov.caller') : t('ov.callee')}</b>
               <span className="badge mut">{st.codec || '—'}</span>
-              <div style={{ flex: 1 }} />
+              <span className="atrack-addr mono" title={st.key}>{String(st.key).replace('>', ' → ')}</span>
+              <input type="range" className="arange" min={0} max={Math.max(totalSec, 0.01)} step={0.01} value={cur}
+                onChange={e => seekTo(+e.target.value)} title={t('audio.seek')} />
+              <span className="mono atime">{fmtClock(cur)} / {fmtClock(totalSec)}</span>
               <button className={`btn sm ${solo === slot ? 'primary' : ''}`} onClick={() => setSolo(solo === slot ? null : slot)}>{t('audio.solo')}</button>
               <button className={`btn sm ${mute[slot] ? 'danger' : ''}`} onClick={() => setMute(m => ({ ...m, [slot]: !m[slot] }))}>{t('audio.mute')}</button>
             </div>
-            <WaveCanvas waveform={st.waveform} color={slot === 'a' ? '#2563eb' : '#7c3aed'}
-              cur={cur} totalSec={totalSec} zoom={zoom} onSeek={seekTo} />
+          ))}
+        </div>
+      </div>
+
+      <div className="card">
+        <div className="card-title" style={{ flexWrap: 'wrap' }}>
+          {t('audio.legend')}
+          <div style={{ flex: 1 }} />
+          <span className="aleg"><i style={{ background: colors.a }} />{t('audio.amp')}</span>
+          <span className="aleg"><i style={{ background: 'rgba(214,120,40,.55)' }} />{t('audio.lossMark')}</span>
+          <span className="aleg"><i style={{ background: 'rgba(140,150,164,.35)' }} />{t('audio.silence')}</span>
+          <span className="aleg"><i style={{ background: '#dc2626' }} />{t('audio.playhead')}</span>
+        </div>
+        {tracks.map(([slot, st]) => (
+          <div key={slot} className="awave-row">
+            <div className="awave-side">
+              <div className="awave-name">
+                <span className="adot" style={{ background: colors[slot] }} />
+                {slot === 'a' ? t('ov.caller') : t('ov.callee')}
+                <span className="badge mut">{st.codec || '—'}</span>
+              </div>
+              <div className="mono awave-addr">{String(st.key).replace('>', ' → ')}</div>
+              <div className="awave-meta">
+                <span>{t('audio.received')} {st.packets ?? 0}</span>
+                <span>{t('diag.lost')} {st.lost ?? 0}</span>
+                <span>{t('diag.jitter')} {st.jitterMs != null ? Number(st.jitterMs).toFixed(1) : '—'} ms</span>
+                {st.sampleRate ? <span>{st.sampleRate / 1000} kHz</span> : null}
+              </div>
+            </div>
+            <AudioWave
+              waveform={st.waveform} marks={st.marks} firstUs={st.firstUs}
+              dur={st.pcm ? st.pcm.byteLength / 2 / st.sampleRate : totalSec}
+              totalSec={totalSec} cur={cur} color={colors[slot]} onSeek={seekTo}
+            />
           </div>
-        );
-      })}
+        ))}
+        <div className="awave-foot">{t('audio.waveHint')}</div>
+      </div>
+
+      <div className="card audio-transport">
+        <button className="btn primary" onClick={() => (playing ? pause() : play())}>
+          {playing ? `⏸ ${t('audio.pause')}` : `▶ ${t('audio.play')}`}
+        </button>
+        <span className="mono" style={{ fontSize: 12.5 }}>{fmtClock(cur)} / {fmtClock(totalSec)}</span>
+        <input type="range" min={0} max={Math.max(totalSec, 0.01)} step={0.01} value={cur}
+          onChange={e => seekTo(+e.target.value)}
+          style={{ flex: 1, minWidth: 160, accentColor: 'var(--accent)' }} title={t('audio.seek')} />
+        <select className="input" value={rate} onChange={e => setRate(+e.target.value)} style={{ width: 78 }}>
+          {[0.5, 0.75, 1, 1.25, 1.5, 2].map(r => <option key={r} value={r}>{r}×</option>)}
+        </select>
+        <span className="mono" style={{ fontSize: 11.5, color: 'var(--fg3)' }}>{cur.toFixed(3)} / {totalSec.toFixed(3)} s</span>
+      </div>
+    </div>
+  );
+}
+
+function Stat({ label, value, sub }) {
+  return (
+    <div className="astat">
+      <div className="astat-k">{label}</div>
+      <div className="astat-v mono">{value}</div>
+      {sub && <div className="astat-s">{sub}</div>}
     </div>
   );
 }
@@ -1144,46 +1222,121 @@ function fmtClock(s) {
   return `${String(m).padStart(2, '0')}:${String(ss).padStart(2, '0')}.${String(ms).padStart(2, '0')}`;
 }
 
-function WaveCanvas({ waveform, color, cur, totalSec, zoom, onSeek }) {
+/* 波形：时间轴 + 振幅包络 + 静音区 + 丢包/断流标记 + 播放头 */
+function AudioWave({ waveform, marks = [], firstUs, dur = 0, totalSec, cur, color, onSeek }) {
   const ref = useRef(null);
   const [hover, setHover] = useState(null);
 
   useEffect(() => {
     const cv = ref.current;
-    if (!cv || !waveform?.length) return;
-    const dpr = 2;
-    cv.width = cv.clientWidth * dpr; cv.height = 96 * dpr;
+    if (!cv) return;
+    const dpr = window.devicePixelRatio || 2;
+    const W = cv.clientWidth || 640, H = 84;
+    cv.width = W * dpr; cv.height = H * dpr;
     const ctx = cv.getContext('2d');
-    ctx.clearRect(0, 0, cv.width, cv.height);
-    const vis = Math.max(1, Math.floor(waveform.length / zoom));
-    const step = cv.width / vis;
-    ctx.fillStyle = color;
-    for (let i = 0; i < vis; i++) {
-      const h = Math.max(2, waveform[i] * cv.height * 0.88);
-      ctx.fillRect(i * step, (cv.height - h) / 2, Math.max(1, step * 0.7), h);
+    ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+    ctx.clearRect(0, 0, W, H);
+    const span = Math.max(totalSec, 0.001);
+    const xOf = sec => Math.max(0, Math.min(W, (sec / span) * W));
+
+    // 时间网格
+    ctx.strokeStyle = '#e9eef5'; ctx.lineWidth = 1;
+    ctx.fillStyle = '#93a0b1';
+    ctx.font = '10px "JetBrains Mono", Consolas, monospace';
+    const step = axisStep(span);
+    for (let sec = 0; sec <= span + 1e-6; sec += step) {
+      const x = Math.round(xOf(sec)) + 0.5;
+      ctx.beginPath(); ctx.moveTo(x, 0); ctx.lineTo(x, H); ctx.stroke();
+      if (sec + step <= span + 1e-6 && xOf(sec) < W - 32) ctx.fillText(axisLabel(sec), x + 3, H - 3);
     }
-    const px = (cur / Math.max(totalSec, 0.001)) * cv.width;
-    ctx.strokeStyle = '#dc2626'; ctx.lineWidth = dpr;
-    ctx.beginPath(); ctx.moveTo(px, 0); ctx.lineTo(px, cv.height); ctx.stroke();
-  }, [waveform, cur, zoom, color, totalSec]);
+
+    // 静音区间（振幅接近 0 且持续 > 300ms）
+    if (waveform?.length) {
+      let runStart = null;
+      for (let i = 0; i <= waveform.length; i++) {
+        const quiet = i < waveform.length && waveform[i] < 0.006;
+        if (quiet && runStart === null) runStart = i;
+        if ((!quiet || i === waveform.length) && runStart !== null) {
+          const s0 = runStart * 0.02, s1 = i * 0.02;
+          if (s1 - s0 > 0.3) {
+            ctx.fillStyle = 'rgba(140,150,164,.09)';
+            ctx.fillRect(xOf(s0), 0, Math.max(1, xOf(s1) - xOf(s0)), H);
+          }
+          runStart = null;
+        }
+      }
+    }
+
+    // 丢包 / 断流标记
+    for (const m of marks) {
+      const sec = firstUs != null ? Math.max(0, (m.us - firstUs) / 1e6) : 0;
+      const x0 = xOf(sec);
+      const x1 = xOf(sec + Math.max(0.02, (m.ms || 0) / 1000));
+      ctx.fillStyle = 'rgba(214,120,40,.16)';
+      ctx.fillRect(x0, 0, Math.max(2, x1 - x0), H);
+      ctx.strokeStyle = m.type === 'gap' ? 'rgba(190,90,30,.55)' : 'rgba(214,160,60,.6)';
+      ctx.beginPath(); ctx.moveTo(x0 + 0.5, 0); ctx.lineTo(x0 + 0.5, H); ctx.stroke();
+    }
+
+    // 振幅包络（按像素列取峰值）
+    if (waveform?.length) {
+      const cols = Math.max(1, Math.floor(xOf(dur || span)));
+      const amps = new Float32Array(cols);
+      for (let i = 0; i < waveform.length; i++) {
+        const px = Math.min(cols - 1, Math.floor((i / waveform.length) * cols));
+        if (waveform[i] > amps[px]) amps[px] = waveform[i];
+      }
+      ctx.fillStyle = color; ctx.globalAlpha = 0.82;
+      for (let x = 0; x < cols; x++) {
+        const h = Math.max(1, amps[x] * H * 0.86);
+        ctx.fillRect(x, (H - h) / 2, 1, h);
+      }
+      ctx.globalAlpha = 1;
+    }
+
+    ctx.strokeStyle = '#dde5ef';
+    ctx.beginPath(); ctx.moveTo(0, H / 2 + 0.5); ctx.lineTo(W, H / 2 + 0.5); ctx.stroke();
+
+    // 播放头
+    const px = xOf(cur);
+    ctx.strokeStyle = '#dc2626'; ctx.lineWidth = 1.5;
+    ctx.beginPath(); ctx.moveTo(px, 0); ctx.lineTo(px, H); ctx.stroke();
+    ctx.fillStyle = '#dc2626';
+    ctx.beginPath(); ctx.arc(px, 6, 3, 0, Math.PI * 2); ctx.fill();
+  }, [waveform, marks, firstUs, dur, totalSec, cur, color]);
 
   const toSec = e => {
     const r = ref.current.getBoundingClientRect();
     return Math.max(0, Math.min(totalSec, ((e.clientX - r.left) / r.width) * totalSec));
   };
+
   return (
-    <div style={{ position: 'relative' }}>
-      <canvas ref={ref} style={{ width: '100%', height: 96, display: 'block', background: '#fff', borderRadius: 7, border: '1px solid var(--line)', cursor: 'crosshair' }}
+    <div className="awave">
+      <canvas ref={ref} style={{ width: '100%', height: 84, display: 'block' }}
         onClick={e => onSeek?.(toSec(e))}
         onMouseMove={e => setHover(toSec(e))}
         onMouseLeave={() => setHover(null)} />
       {hover != null && (
-        <div style={{ position: 'absolute', top: 4, left: `calc(${(hover / Math.max(totalSec, .001)) * 100}% + 6px)`, fontSize: 10.5, fontFamily: 'var(--font-mono)', color: 'var(--fg2)', pointerEvents: 'none', background: 'rgba(255,255,255,.9)', padding: '0 4px', borderRadius: 3 }}>
-          {fmtClock(hover)}
-        </div>
+        <>
+          <div className="awave-hover" style={{ left: `${(hover / Math.max(totalSec, 0.001)) * 100}%` }} />
+          <div className="awave-tip" style={{ left: `calc(${(hover / Math.max(totalSec, 0.001)) * 100}% + 6px)` }}>{fmtClock(hover)}</div>
+        </>
       )}
     </div>
   );
+}
+
+function axisStep(span) {
+  const raw = span / 8;
+  return [0.5, 1, 2, 5, 10, 15, 30, 60, 120, 300, 600].find(s => s >= raw) || 900;
+}
+function axisLabel(sec) {
+  if (sec < 60) {
+    const v = Math.round(sec * 10) / 10;
+    return `${v}s`;
+  }
+  const m = Math.floor(sec / 60), s = Math.round(sec % 60);
+  return `${m}:${String(s).padStart(2, '0')}`;
 }
 
 function wavFromPcm(int16, sampleRate) {
@@ -1202,12 +1355,17 @@ function wavFromPcm(int16, sampleRate) {
    导出
    ============================================================ */
 function ExportTab({ sel }) {
-  const { showToast } = useStore();
+  const { state, showToast } = useStore();
+  const file = state.files.find(f => f.fileId === sel.fileId);
+  const textOnly = file?.format === 'text';
   const [maskUser, setMaskUser] = useState(false);
   const [maskIp, setMaskIp] = useState(false);
   const [items, setItems] = useState({ pcapng: true, wav: true, report: true });
   const [results, setResults] = useState(null);
   const [busy, setBusy] = useState(false);
+
+  // 文本信令日志没有原始报文与媒体，只允许导出报告
+  const active = textOnly ? { pcapng: false, wav: false, report: items.report } : items;
 
   const run = async () => {
     setBusy(true); setResults(null);
@@ -1216,9 +1374,9 @@ function ExportTab({ sel }) {
       if (!outDir) return;
       const safe = sel.callId.slice(0, 20).replace(/[^a-zA-Z0-9_-]/g, '_');
       const list = [];
-      if (items.pcapng) list.push({ type: 'pcapng', outPath: `${outDir}/call_${safe}.pcapng` });
-      if (items.wav) list.push({ type: 'wav', outPath: outDir });
-      if (items.report) list.push({ type: 'report', outPath: `${outDir}/report_${safe}.html` });
+      if (active.pcapng) list.push({ type: 'pcapng', outPath: `${outDir}/call_${safe}.pcapng` });
+      if (active.wav) list.push({ type: 'wav', outPath: outDir });
+      if (active.report) list.push({ type: 'report', outPath: `${outDir}/report_${safe}.html` });
       const res = await api.exportRun({ fileId: sel.fileId, callId: sel.callId, items: list, opts: { maskUser, maskIp } });
       if (res.ok) { setResults(res.results); showToast('ok', '导出完成'); }
       else showToast('err', res.error);
@@ -1230,10 +1388,19 @@ function ExportTab({ sel }) {
       <div style={{ display: 'flex', flexDirection: 'column', gap: 12, maxWidth: 720 }}>
         <div className="card">
           <div className="card-title">导出内容</div>
+          {textOnly && (
+            <div style={{ fontSize: 12, color: 'var(--fg3)', marginBottom: 8, lineHeight: 1.7 }}>
+              当前为文本信令日志：不含原始报文与 RTP 媒体，仅支持导出 HTML 分析报告。
+            </div>
+          )}
           <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
-            <label className="ck"><input type="checkbox" checked={items.pcapng} onChange={e => setItems(i => ({ ...i, pcapng: e.target.checked }))} />原始关联报文（PCAPNG，本通话 SIP + RTP）</label>
-            <label className="ck"><input type="checkbox" checked={items.wav} onChange={e => setItems(i => ({ ...i, wav: e.target.checked }))} />分方向 WAV（主叫 / 被叫 / 混合）</label>
-            <label className="ck"><input type="checkbox" checked={items.report} onChange={e => setItems(i => ({ ...i, report: e.target.checked }))} />HTML 分析报告（自包含单文件）</label>
+            <label className="ck" style={textOnly ? { opacity: .5 } : undefined}>
+              <input type="checkbox" checked={active.pcapng} disabled={textOnly} onChange={e => setItems(i => ({ ...i, pcapng: e.target.checked }))} />原始关联报文（PCAPNG，本通话 SIP + RTP）
+            </label>
+            <label className="ck" style={textOnly ? { opacity: .5 } : undefined}>
+              <input type="checkbox" checked={active.wav} disabled={textOnly} onChange={e => setItems(i => ({ ...i, wav: e.target.checked }))} />分方向 WAV（主叫 / 被叫 / 混合）
+            </label>
+            <label className="ck"><input type="checkbox" checked={active.report} onChange={e => setItems(i => ({ ...i, report: e.target.checked }))} />HTML 分析报告（自包含单文件）</label>
           </div>
           <div className="card-title" style={{ marginTop: 14 }}>隐私遮蔽</div>
           <div style={{ display: 'flex', gap: 18, flexWrap: 'wrap' }}>
@@ -1241,7 +1408,7 @@ function ExportTab({ sel }) {
             <label className="ck"><input type="checkbox" checked={maskIp} onChange={e => setMaskIp(e.target.checked)} />遮蔽 IP（保留前 2 段）</label>
           </div>
           <div style={{ marginTop: 14 }}>
-            <button className="btn primary" disabled={busy || (!items.pcapng && !items.wav && !items.report)} onClick={run}>
+            <button className="btn primary" disabled={busy || (!active.pcapng && !active.wav && !active.report)} onClick={run}>
               {busy ? '导出中…' : '选择目录并导出'}
             </button>
           </div>
