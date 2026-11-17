@@ -4,6 +4,18 @@ All notable changes to this project are documented in this file.
 The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and this project
 adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.0.6] — 2026-11-17
+
+### Changed
+- Ladder participants now show **信令 / 媒体** instead of caller / callee / media: any address that carries SIP
+  is signaling, and only RTP-only endpoints are marked as media (fixes B2BUA servers being labeled media).
+- DTMF keys moved to a dedicated lane above each waveform, spaced out to avoid overlap, with a leader line
+  back to the exact keypress time; waveform height increased to fit.
+
+### Fixed
+- Pseudo-gaps caused by RTP timestamp resets (>10 s) are ignored by the stall/longest-gap stats and no
+  longer shade the whole waveform.
+
 ## [1.0.5] — 2026-11-17
 
 ### Added
@@ -108,6 +120,7 @@ adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 - No audio in dual-channel playback for captures without SDP (direction slot collision).
 - Layout imbalance on very wide displays and lack of stacking on narrow windows.
 
+[1.0.6]: https://github.com/Super-Gouba/m-ryuga/releases/tag/v1.0.6
 [1.0.5]: https://github.com/Super-Gouba/m-ryuga/releases/tag/v1.0.5
 [1.0.4]: https://github.com/Super-Gouba/m-ryuga/releases/tag/v1.0.4
 [1.0.3]: https://github.com/Super-Gouba/m-ryuga/releases/tag/v1.0.3

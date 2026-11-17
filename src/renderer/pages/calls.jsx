@@ -386,7 +386,8 @@ function LadderDiagram({ data, rows, pick, onPick }) {
         {actors.map((a, i) => {
           const [host, port] = String(a.label).split(':');
           const boxW = Math.min(ACTOR_W - 24, 200);
-          const role = i === callerIdx ? '主叫' : (i === calleeIdx ? '被叫' : '媒体');
+          // 参与方只区分信令 / 媒体：出现在 SIP 报文里的是信令，只有 RTP 的才是媒体
+          const role = a.kind === 'media' ? t('ladder.media') : t('ladder.sig');
           return (
             <g key={i}>
               <rect x={actorX(i) - boxW / 2} y={6} width={boxW} height={52} rx={8}
@@ -1045,7 +1046,8 @@ function AudioAnalysis({ media, soloKey, call }) {
     const cap = Math.max(1, totalSec) * 1000;
     for (const [slot, s] of tracks) {
       for (const m of (s.marks || [])) {
-        // 时间戳异常回退可能产生超大 gap，按音频时长截断，避免统计失真
+        // 跳过 RTP 时间戳重置造成的伪断流，并按音频时长截断
+        if ((m.ms || 0) > 10000) continue;
         marks.push({ ...m, ms: Math.min(Math.max(0, m.ms || 0), cap), slot });
       }
     }
@@ -1241,7 +1243,8 @@ function AudioWave({ waveform, marks = [], dtmf = [], firstUs, dur = 0, totalSec
     const cv = ref.current;
     if (!cv) return;
     const dpr = window.devicePixelRatio || 2;
-    const W = cv.clientWidth || 640, H = 84;
+    const W = cv.clientWidth || 640, H = 104;
+    const LANE = 26; // 顶部按键轨道高度
     cv.width = W * dpr; cv.height = H * dpr;
     const ctx = cv.getContext('2d');
     ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
@@ -1256,9 +1259,12 @@ function AudioWave({ waveform, marks = [], dtmf = [], firstUs, dur = 0, totalSec
     const step = axisStep(span);
     for (let sec = 0; sec <= span + 1e-6; sec += step) {
       const x = Math.round(xOf(sec)) + 0.5;
-      ctx.beginPath(); ctx.moveTo(x, 0); ctx.lineTo(x, H); ctx.stroke();
+      ctx.beginPath(); ctx.moveTo(x, LANE); ctx.lineTo(x, H); ctx.stroke();
       if (sec + step <= span + 1e-6 && xOf(sec) < W - 32) ctx.fillText(axisLabel(sec), x + 3, H - 3);
     }
+    // 按键轨道分隔线
+    ctx.strokeStyle = '#eef2f7';
+    ctx.beginPath(); ctx.moveTo(0, LANE + 0.5); ctx.lineTo(W, LANE + 0.5); ctx.stroke();
 
     // 静音区间（振幅接近 0 且持续 > 300ms）
     if (waveform?.length) {
@@ -1270,23 +1276,24 @@ function AudioWave({ waveform, marks = [], dtmf = [], firstUs, dur = 0, totalSec
           const s0 = runStart * 0.02, s1 = i * 0.02;
           if (s1 - s0 > 0.3) {
             ctx.fillStyle = 'rgba(140,150,164,.09)';
-            ctx.fillRect(xOf(s0), 0, Math.max(1, xOf(s1) - xOf(s0)), H);
+            ctx.fillRect(xOf(s0), LANE, Math.max(1, xOf(s1) - xOf(s0)), H - LANE);
           }
           runStart = null;
         }
       }
     }
 
-    // 丢包 / 断流标记（按音频时长截断异常时间戳跳变）
+    // 丢包 / 断流标记（忽略时间戳重置造成的伪 gap）
     for (const m of marks) {
+      if ((m.ms || 0) > 10000) continue;
       const sec = firstUs != null ? Math.max(0, (m.us - firstUs) / 1e6) : 0;
       const gapMs = Math.min(Math.max(0, m.ms || 0), span * 1000);
       const x0 = xOf(sec);
       const x1 = xOf(sec + Math.max(0.02, gapMs / 1000));
       ctx.fillStyle = 'rgba(214,120,40,.16)';
-      ctx.fillRect(x0, 0, Math.max(2, x1 - x0), H);
+      ctx.fillRect(x0, LANE, Math.max(2, x1 - x0), H - LANE);
       ctx.strokeStyle = m.type === 'gap' ? 'rgba(190,90,30,.55)' : 'rgba(214,160,60,.6)';
-      ctx.beginPath(); ctx.moveTo(x0 + 0.5, 0); ctx.lineTo(x0 + 0.5, H); ctx.stroke();
+      ctx.beginPath(); ctx.moveTo(x0 + 0.5, LANE); ctx.lineTo(x0 + 0.5, H); ctx.stroke();
     }
 
     // DTMF 按键标记在绘制完振幅后叠加（见下方）
@@ -1301,46 +1308,53 @@ function AudioWave({ waveform, marks = [], dtmf = [], firstUs, dur = 0, totalSec
       }
       ctx.fillStyle = color; ctx.globalAlpha = 0.82;
       for (let x = 0; x < cols; x++) {
-        const h = Math.max(1, amps[x] * H * 0.86);
-        ctx.fillRect(x, (H - h) / 2, 1, h);
+        const h = Math.max(1, amps[x] * (H - LANE) * 0.88);
+        ctx.fillRect(x, LANE + (H - LANE - h) / 2, 1, h);
       }
       ctx.globalAlpha = 1;
     }
 
     ctx.strokeStyle = '#dde5ef';
-    ctx.beginPath(); ctx.moveTo(0, H / 2 + 0.5); ctx.lineTo(W, H / 2 + 0.5); ctx.stroke();
+    ctx.beginPath(); ctx.moveTo(0, LANE + (H - LANE) / 2 + 0.5); ctx.lineTo(W, LANE + (H - LANE) / 2 + 0.5); ctx.stroke();
 
-    // DTMF 按键标记：虚线定位 + 顶部按键值（相邻按键错开高度避免重叠）
-    dtmf.forEach((d, i) => {
+    // DTMF 按键：独立轨道 + 真实时间虚线 + 防重叠横向排布
+    let lastRight = -1;
+    dtmf.forEach((d) => {
       if (firstUs == null || d.startUs == null) return;
       const sec = (d.startUs - firstUs) / 1e6;
       if (sec < 0 || sec > span) return;
-      const x = xOf(sec);
+      const tx = xOf(sec);
+      let cx = Math.max(12, tx);
+      if (cx < lastRight + 24) cx = lastRight + 24;
+      if (cx > W - 12) cx = W - 12;
+      lastRight = cx + 11;
       ctx.save();
-      ctx.strokeStyle = 'rgba(190,140,40,.8)';
+      ctx.strokeStyle = 'rgba(190,140,40,.55)';
       ctx.lineWidth = 1;
       ctx.setLineDash([3, 3]);
-      ctx.beginPath(); ctx.moveTo(x + 0.5, 0); ctx.lineTo(x + 0.5, H); ctx.stroke();
+      ctx.beginPath(); ctx.moveTo(tx + 0.5, LANE - 8); ctx.lineTo(tx + 0.5, H); ctx.stroke();
+      if (Math.abs(cx - tx) > 1) {
+        ctx.setLineDash([]);
+        ctx.beginPath(); ctx.moveTo(tx + 0.5, LANE - 8); ctx.lineTo(cx, 17); ctx.stroke();
+      }
       ctx.restore();
-      const cy = i % 2 === 0 ? 4 : 21;
-      const cx = Math.max(9, Math.min(W - 9, x));
       ctx.beginPath();
-      if (ctx.roundRect) ctx.roundRect(cx - 8, cy, 16, 15, 4); else ctx.rect(cx - 8, cy, 16, 15);
-      ctx.fillStyle = '#fbf3e4'; ctx.fill();
-      ctx.strokeStyle = '#e7cfa4'; ctx.lineWidth = 1; ctx.stroke();
-      ctx.fillStyle = '#8a5a12';
-      ctx.font = 'bold 10px "JetBrains Mono", Consolas, monospace';
+      if (ctx.roundRect) ctx.roundRect(cx - 10, 2, 20, 15, 7); else ctx.rect(cx - 10, 2, 20, 15);
+      ctx.fillStyle = '#fdf6e8'; ctx.fill();
+      ctx.strokeStyle = '#e0bd7f'; ctx.lineWidth = 1; ctx.stroke();
+      ctx.fillStyle = '#7a4e0a';
+      ctx.font = 'bold 10.5px "JetBrains Mono", Consolas, monospace';
       ctx.textAlign = 'center';
-      ctx.fillText(String(d.digit), cx, cy + 11);
+      ctx.fillText(String(d.digit), cx, 13);
       ctx.textAlign = 'start';
     });
 
     // 播放头
     const px = xOf(cur);
     ctx.strokeStyle = '#dc2626'; ctx.lineWidth = 1.5;
-    ctx.beginPath(); ctx.moveTo(px, 0); ctx.lineTo(px, H); ctx.stroke();
+    ctx.beginPath(); ctx.moveTo(px, LANE); ctx.lineTo(px, H); ctx.stroke();
     ctx.fillStyle = '#dc2626';
-    ctx.beginPath(); ctx.arc(px, 6, 3, 0, Math.PI * 2); ctx.fill();
+    ctx.beginPath(); ctx.arc(px, LANE + 3, 3, 0, Math.PI * 2); ctx.fill();
   }, [waveform, marks, dtmf, firstUs, dur, totalSec, cur, color]);
 
   const toSec = e => {
@@ -1350,7 +1364,7 @@ function AudioWave({ waveform, marks = [], dtmf = [], firstUs, dur = 0, totalSec
 
   return (
     <div className="awave">
-      <canvas ref={ref} style={{ width: '100%', height: 84, display: 'block' }}
+      <canvas ref={ref} style={{ width: '100%', height: 104, display: 'block' }}
         onClick={e => onSeek?.(toSec(e))}
         onMouseMove={e => setHover(toSec(e))}
         onMouseLeave={() => setHover(null)} />
