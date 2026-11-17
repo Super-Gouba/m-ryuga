@@ -197,10 +197,10 @@ function registerIpc(app, win) {
       return { ok: true, ...r };
     } catch (err) { return { ok: false, error: String(err.message || err) }; }
   });
-  ipcMain.handle('update:install', (_e, file) => {
+  ipcMain.handle('update:install', async (_e, file) => {
     const u = globalThis.__mryugaUpdater;
     if (!u || !file) return { ok: false, error: '安装包路径无效' };
-    try { u.install(file); return { ok: true }; } catch (err) { return { ok: false, error: String(err.message || err) }; }
+    try { return await u.install(file); } catch (err) { return { ok: false, error: String(err.message || err) }; }
   });
   ipcMain.handle('update:getSettings', () => {
     const u = globalThis.__mryugaUpdater;

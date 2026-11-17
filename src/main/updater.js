@@ -88,17 +88,37 @@ class Updater {
     fs.mkdirSync(dir, { recursive: true });
     const file = path.join(dir, path.basename(asset.name));
     await downloadFile(asset.url, file, onProgress);
+    // 去掉「来自 Internet」标记，避免静默安装时被 SmartScreen 拦截
+    try { fs.unlinkSync(`${file}:Zone.Identifier`); } catch { /* 无标记或已删除 */ }
     return { file, name: asset.name, size: asset.size, portable };
   }
 
-  /** 启动安装器并退出应用（NSIS 安装版使用 /S 静默升级） */
+  /** 启动安装器：安装版静默安装，完成后自动重启；便携版直接启动新包 */
   install(file) {
     const { spawn } = require('child_process');
     const silent = /Setup/i.test(path.basename(file));
-    const child = spawn(file, silent ? ['/S'] : [], { detached: true, stdio: 'ignore' });
-    child.unref();
-    setTimeout(() => this.app.quit(), 600);
-    return true;
+    if (!silent) {
+      const child = spawn(file, [], { detached: true, stdio: 'ignore' });
+      child.unref();
+      setTimeout(() => this.app.quit(), 800);
+      return Promise.resolve({ ok: true });
+    }
+    return new Promise((resolve) => {
+      let settled = false;
+      const done = (r) => { if (!settled) { settled = true; resolve(r); } };
+      const child = spawn(file, ['/S'], { stdio: 'ignore' });
+      child.on('error', (e) => done({ ok: false, error: String(e.message || e) }));
+      child.on('exit', (code) => {
+        if (code === 0) {
+          done({ ok: true });
+          // 静默安装结束后重新启动新版本
+          setTimeout(() => { this.app.relaunch(); this.app.exit(0); }, 400);
+        } else {
+          done({ ok: false, error: `安装器退出码 ${code}，请手动运行下载的安装包` });
+        }
+      });
+      setTimeout(() => done({ ok: false, error: '安装超时，请手动运行下载的安装包' }), 120000);
+    });
   }
 }
 

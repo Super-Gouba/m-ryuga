@@ -4,6 +4,20 @@ All notable changes to this project are documented in this file.
 The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and this project
 adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.0.8] — 2026-11-17
+
+### Fixed
+- Silent upgrade now waits for the NSIS installer to finish, then relaunches the app automatically
+  (`app.relaunch`), instead of quitting before installation completes.
+- Downloaded installers have their Mark-of-the-Web removed, so the silent `/S` install is not blocked by
+  SmartScreen.
+- Installer failures (non-zero exit code or timeout) are reported in the dialog instead of leaving the app
+  closed.
+
+### Notes
+- Builds **before 1.0.7** do not contain the in-app downloader — upgrading from 1.0.5 or earlier requires
+  one manual download of the current installer. From 1.0.7 onward the one-click update applies.
+
 ## [1.0.7] — 2026-11-17
 
 ### Added
@@ -134,6 +148,7 @@ adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 - No audio in dual-channel playback for captures without SDP (direction slot collision).
 - Layout imbalance on very wide displays and lack of stacking on narrow windows.
 
+[1.0.8]: https://github.com/Super-Gouba/m-ryuga/releases/tag/v1.0.8
 [1.0.7]: https://github.com/Super-Gouba/m-ryuga/releases/tag/v1.0.7
 [1.0.6]: https://github.com/Super-Gouba/m-ryuga/releases/tag/v1.0.6
 [1.0.5]: https://github.com/Super-Gouba/m-ryuga/releases/tag/v1.0.5
