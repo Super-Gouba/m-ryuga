@@ -315,6 +315,7 @@ function OverviewTab({ call, msgs, sel }) {
 function LadderTab({ data, rows, pick, onPick }) {
   return (
     <div className="ladder-wrap" style={{ display: 'flex', flexDirection: 'column' }}>
+      <LadderFlow msgs={data.msgs} />
       <div style={{ flex: 1, minHeight: 0, overflow: 'auto' }}>
         <LadderDiagram data={data} rows={rows} pick={pick} onPick={onPick} />
       </div>
@@ -329,6 +330,80 @@ function LadderTab({ data, rows, pick, onPick }) {
       </div>
     </div>
   );
+}
+
+/* 呼叫流程解读：按关键事件生成阶段条，帮助快速判断这通电话经历了什么 */
+function LadderFlow({ msgs }) {
+  const steps = useMemo(() => buildFlow(msgs), [msgs]);
+  if (!steps.length) return null;
+  return (
+    <div className="ladder-flow">
+      <span className="lf-cap">{t('ladder.flow')}</span>
+      {steps.map((s, i) => (
+        <React.Fragment key={i}>
+          {i > 0 && <span className="lf-arrow">→</span>}
+          <span className="lf-step" data-tone={s.tone}>
+            <i />{s.text}<em>{s.at}</em>
+          </span>
+        </React.Fragment>
+      ))}
+    </div>
+  );
+}
+
+function buildFlow(msgs) {
+  const list = (msgs || []).filter(Boolean).slice().sort((a, b) => a.tsUs - b.tsUs);
+  if (!list.length) return [];
+  const t0 = list[0].tsUs;
+  const at = us => `+${Math.max(0, (us - t0) / 1e6).toFixed(2)} s`;
+  const first = fn => list.find(fn);
+  const methodOf = m => String(m.cseqMethod || m.method || '').toUpperCase();
+  const invite = first(m => m.kind === 'request' && methodOf(m) === 'INVITE');
+  const early = first(m => m.kind === 'response' && (m.status === 180 || m.status === 183));
+  const answer = first(m => m.kind === 'response' && m.status >= 200 && m.status < 300 && methodOf(m) === 'INVITE');
+  const fail = first(m => m.kind === 'response' && m.status >= 400 && methodOf(m) === 'INVITE');
+  const bye = first(m => m.kind === 'request' && methodOf(m) === 'BYE');
+  const cancel = first(m => m.kind === 'request' && methodOf(m) === 'CANCEL');
+
+  const steps = [];
+  if (invite) steps.push({ tone: 'req', text: t('ladder.stepInvite'), at: at(invite.tsUs) });
+  if (early) steps.push({ tone: 'warn', text: early.status === 183 ? t('ladder.stepEarly') : t('ladder.stepRinging'), at: at(early.tsUs) });
+  if (answer) steps.push({ tone: 'ok', text: t('ladder.stepAnswer'), at: at(answer.tsUs) });
+  if (answer && bye) steps.push({ tone: 'info', text: t('ladder.stepTalk'), at: `${((bye.tsUs - answer.tsUs) / 1e6).toFixed(2)} s` });
+  if (fail && !answer) steps.push({ tone: 'err', text: `${t('ladder.stepFail')} ${fail.status}`, at: at(fail.tsUs) });
+  if (bye) steps.push({ tone: 'bye', text: t('ladder.stepBye'), at: at(bye.tsUs) });
+  else if (cancel) steps.push({ tone: 'warn', text: t('ladder.stepCancel'), at: at(cancel.tsUs) });
+  return steps;
+}
+
+/* 逐条消息的白话注释 */
+function annoOf(m) {
+  if (!m) return null;
+  const method = String(m.cseqMethod || m.method || '').toUpperCase();
+  if (m.kind === 'request') {
+    if (method === 'INVITE') return { tone: 'req', text: msgLabel(m).includes('/ SDP') ? t('ladder.annoInviteSdp') : t('ladder.annoInvite') };
+    if (method === 'ACK') return { tone: 'ok', text: t('ladder.annoAck') };
+    if (method === 'BYE') return { tone: 'bye', text: t('ladder.annoBye') };
+    if (method === 'CANCEL') return { tone: 'warn', text: t('ladder.annoCancel') };
+    if (method === 'PRACK') return { tone: 'info', text: t('ladder.annoPrack') };
+    if (method === 'UPDATE') return { tone: 'info', text: t('ladder.annoUpdate') };
+    if (method === 'REFER') return { tone: 'info', text: t('ladder.annoRefer') };
+    if (method === 'REGISTER') return { tone: 'info', text: t('ladder.annoRegister') };
+    return { tone: 'info', text: method };
+  }
+  const s = Number(m.status) || 0;
+  if (s === 100) return { tone: 'info', text: t('ladder.annoTrying') };
+  if (s === 180) return { tone: 'warn', text: t('ladder.annoRinging') };
+  if (s === 183) return { tone: 'warn', text: t('ladder.annoEarly') };
+  if (s >= 200 && s < 300) {
+    if (method === 'INVITE') return { tone: 'ok', text: t('ladder.annoAnswer') };
+    if (method === 'BYE') return { tone: 'bye', text: t('ladder.annoByeOk') };
+    return { tone: 'ok', text: s === 200 ? t('ladder.annoOk') : String(s) };
+  }
+  if (s === 487) return { tone: 'warn', text: t('ladder.annoCanceled') };
+  if (s >= 400 && s < 500) return { tone: 'err', text: t('ladder.annoFail') };
+  if (s >= 500) return { tone: 'err', text: t('ladder.annoServerFail') };
+  return null;
 }
 
 /* 消息短标签：INVITE / SDP、200 OK / SDP … */
@@ -379,6 +454,10 @@ function LadderDiagram({ data, rows, pick, onPick }) {
     'other-req': 'var(--sig-ack)', ok: 'var(--sig-ok)', redirect: 'var(--amber)',
     c4xx: 'var(--sig-4xx)', c5xx: 'var(--sig-5xx)', prov: 'var(--sig-prov)'
   }[cls] || 'var(--fg2)');
+  const annoTone = {
+    req: 'var(--accent)', ok: 'var(--green)', warn: 'var(--amber)',
+    err: 'var(--red)', bye: 'var(--violet)', info: 'var(--fg3)'
+  };
 
   return (
     <div ref={hostRef} style={{ width: '100%', minHeight: H }}>
@@ -458,6 +537,7 @@ function LadderDiagram({ data, rows, pick, onPick }) {
 
           const l = lanes[r.idx];
           const m = data.msgs[r.idx];
+          const anno = annoOf(m);
           const x1 = actorX(l.from), x2 = actorX(l.to);
           const c = color(l.cls);
           const dir = x2 >= x1 ? 1 : -1;
@@ -476,8 +556,16 @@ function LadderDiagram({ data, rows, pick, onPick }) {
               <polygon points={head} fill={c} />
               <text x={mid} y={y - 9} textAnchor="middle" fontSize={12} fontWeight="700"
                 fill={c} fontFamily="var(--font-mono)">{msgLabel(m)}</text>
-              <text x={mid} y={y + 15} textAnchor="middle" fontSize={9.5} fill="var(--fg3)"
-                fontFamily="var(--font-mono)">{m.kind === 'request' ? `CSeq ${m.cseq}` : `CSeq ${m.cseq} ${m.cseqMethod}`}</text>
+              {anno ? (
+                <text x={mid} y={y + 15} textAnchor="middle" fontSize={9.5} fontWeight={600}
+                  fill={annoTone[anno.tone]} fontFamily="var(--font-ui)">
+                  {anno.text}<tspan fill="var(--fg3)" fontWeight={400} fontFamily="var(--font-mono)"
+                    fontSize={9}>{` · CSeq ${m.cseq}${m.kind === 'request' ? '' : ' ' + m.cseqMethod}`}</tspan>
+                </text>
+              ) : (
+                <text x={mid} y={y + 15} textAnchor="middle" fontSize={9.5} fill="var(--fg3)"
+                  fontFamily="var(--font-mono)">{m.kind === 'request' ? `CSeq ${m.cseq}` : `CSeq ${m.cseq} ${m.cseqMethod}`}</text>
+              )}
               <text x={x1 + dir * -7} y={y + 3.5} textAnchor={dir === 1 ? 'end' : 'start'} fontSize={9}
                 fill="var(--fg3)" fontFamily="var(--font-mono)">{m.src.split(':').pop()}</text>
               <text x={x2 + dir * 7} y={y + 3.5} textAnchor={dir === 1 ? 'start' : 'end'} fontSize={9}

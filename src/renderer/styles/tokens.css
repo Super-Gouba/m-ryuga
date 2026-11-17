@@ -460,6 +460,31 @@ select.input { cursor: pointer; }
 .ladder-legend .lg i.dash { height: 0; border-top: 2px dashed; background: none !important; }
 .ladder-legend .lg i.pill { height: 10px; width: 22px; border-radius: 6px; border: 1px solid; }
 
+/* 流序图流程解读条 */
+.ladder-flow {
+  flex-shrink: 0; display: flex; align-items: center; gap: 6px; flex-wrap: wrap;
+  padding: 7px 12px; border-bottom: 1px solid var(--line); background: var(--bg3);
+  font-size: 11.5px; color: var(--fg);
+}
+.ladder-flow .lf-cap {
+  font-size: 10.5px; font-weight: 700; letter-spacing: .6px; color: var(--fg3); margin-right: 2px;
+}
+.ladder-flow .lf-step {
+  display: inline-flex; align-items: center; gap: 5px;
+  padding: 2px 8px; border-radius: 999px; white-space: nowrap;
+  background: var(--bg1); border: 1px solid var(--line);
+}
+.ladder-flow .lf-step em {
+  font-style: normal; font-family: var(--font-mono); font-size: 10px; color: var(--fg3);
+}
+.ladder-flow .lf-step i { width: 6px; height: 6px; border-radius: 50%; background: var(--tone, var(--fg3)); }
+.ladder-flow .lf-step[data-tone="req"] { --tone: var(--accent); }
+.ladder-flow .lf-step[data-tone="ok"] { --tone: var(--green); }
+.ladder-flow .lf-step[data-tone="warn"] { --tone: var(--amber); }
+.ladder-flow .lf-step[data-tone="err"] { --tone: var(--red); }
+.ladder-flow .lf-step[data-tone="bye"] { --tone: var(--violet); }
+.ladder-flow .lf-arrow { color: var(--fg3); font-size: 11px; }
+
 /* 报文放大弹窗（Homer 风格） */
 .msg-modal {
   width: min(1080px, 92vw); height: min(78vh, 860px);
@@ -626,6 +651,63 @@ select.input { cursor: pointer; }
 .modal h3 { font-size: 15px; font-weight: 700; margin-bottom: 6px; }
 .modal p { font-size: 12.5px; color: var(--fg2); line-height: 1.8; }
 .modal-actions { display: flex; gap: 8px; justify-content: flex-end; margin-top: 16px; flex-wrap: wrap; }
+
+/* 关闭应用弹窗 */
+.close-modal {
+  width: min(460px, 94vw); background: var(--bg2); border: 1px solid var(--line2);
+  border-radius: 16px; box-shadow: var(--shadow-3); padding: 18px 20px 16px;
+}
+.cm-head { display: flex; align-items: flex-start; gap: 12px; }
+.cm-ico {
+  width: 40px; height: 40px; flex-shrink: 0; border-radius: 12px;
+  display: grid; place-items: center; font-size: 17px;
+  background: var(--ok-bg); color: var(--green); border: 1px solid #cfe7d8;
+}
+.cm-ico[data-tone="danger"] { background: var(--danger-bg); color: var(--red); border-color: #eccbc8; }
+.cm-title { font-size: 15px; font-weight: 700; color: var(--fg); line-height: 1.3; }
+.cm-sub { font-size: 12px; color: var(--fg3); margin-top: 3px; line-height: 1.6; }
+.cm-options { display: flex; flex-direction: column; gap: 8px; margin: 16px 0 14px; }
+.cm-opt {
+  display: flex; align-items: center; gap: 11px; width: 100%; text-align: left;
+  padding: 11px 13px; border: 1px solid var(--line); border-radius: 11px;
+  background: var(--bg1); cursor: pointer;
+  transition: border-color .15s, background .15s, box-shadow .15s;
+}
+.cm-opt:hover { border-color: var(--line2); background: var(--bg3); }
+.cm-opt[data-active] {
+  border-color: var(--accent-line); background: var(--accent-soft);
+  box-shadow: 0 0 0 1px var(--accent-line) inset;
+}
+.cm-opt[data-tone="danger"][data-active] {
+  border-color: #e8c4c1; background: var(--danger-bg); box-shadow: 0 0 0 1px #e8c4c1 inset;
+}
+.cm-opt-ico {
+  width: 30px; height: 30px; flex-shrink: 0; border-radius: 9px;
+  display: grid; place-items: center; font-size: 15px;
+  background: var(--bg3); color: var(--fg2);
+}
+.cm-opt[data-active] .cm-opt-ico { background: var(--bg1); color: var(--accent); }
+.cm-opt[data-tone="danger"][data-active] .cm-opt-ico { color: var(--red); }
+.cm-opt-body { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 2px; }
+.cm-opt-body b { font-size: 12.8px; font-weight: 600; color: var(--fg); }
+.cm-opt-body small { font-size: 11.3px; color: var(--fg3); line-height: 1.5; }
+.cm-radio {
+  width: 15px; height: 15px; flex-shrink: 0; border-radius: 50%;
+  border: 1.5px solid var(--line2); background: transparent;
+}
+.cm-opt[data-active] .cm-radio {
+  border-color: var(--accent); background: var(--accent);
+  box-shadow: inset 0 0 0 3.5px var(--bg1);
+}
+.cm-opt[data-tone="danger"][data-active] .cm-radio {
+  border-color: var(--red); background: var(--red); box-shadow: inset 0 0 0 3.5px var(--danger-bg);
+}
+.cm-remember {
+  display: flex; align-items: center; gap: 8px; margin-bottom: 14px;
+  font-size: 12px; color: var(--fg2); cursor: pointer;
+}
+.cm-remember input { accent-color: var(--accent); }
+.cm-actions { display: flex; justify-content: flex-end; gap: 8px; }
 
 /* ============================================================
    设置：左分类 + 右纵向分组

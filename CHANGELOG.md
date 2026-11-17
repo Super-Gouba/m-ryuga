@@ -4,6 +4,17 @@ All notable changes to this project are documented in this file.
 The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and this project
 adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.0.12] — 2026-11-17
+
+### Added
+- **Ladder annotations** — a call-flow strip above the ladder summarises the call
+  (setup → ringing → answered → talk time → release), and every SIP message now carries a
+  plain-language annotation under its label (e.g. "answered, media ready"), with CSeq kept inline.
+
+### Changed
+- **Close dialog redesign** — "keep running in the tray" and "quit" are now selectable option cards with
+  icon, description and radio state, followed by a Cancel / Confirm footer; fully localized.
+
 ## [1.0.11] — 2026-11-17
 
 ### Added
@@ -194,6 +205,7 @@ adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 - No audio in dual-channel playback for captures without SDP (direction slot collision).
 - Layout imbalance on very wide displays and lack of stacking on narrow windows.
 
+[1.0.12]: https://github.com/Super-Gouba/m-ryuga/releases/tag/v1.0.12
 [1.0.11]: https://github.com/Super-Gouba/m-ryuga/releases/tag/v1.0.11
 [1.0.10]: https://github.com/Super-Gouba/m-ryuga/releases/tag/v1.0.10
 [1.0.9]: https://github.com/Super-Gouba/m-ryuga/releases/tag/v1.0.9

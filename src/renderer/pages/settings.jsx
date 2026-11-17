@@ -474,21 +474,53 @@ function ChangelogModal({ current, onClose }) {
 /* ---------- 关闭弹窗 ---------- */
 function CloseModal({ onClose }) {
   const [remember, setRemember] = useState(false);
-  const act = (a) => api.resolveClose(a, remember);
+  const [choice, setChoice] = useState('tray');
+  const cancel = async () => { await api.cancelClose(); onClose(); };
+  const confirm = () => api.resolveClose(choice, remember);
+
   return (
     <Overlay>
-      <div className="card" style={{ width: 420, maxWidth: '90vw', padding: 22 }}>
-        <div style={{ fontSize: 15, fontWeight: 700, color: 'var(--fg)', marginBottom: 6 }}>关闭 M-Ryuga</div>
-        <div style={{ fontSize: 12.5, color: 'var(--fg2)', marginBottom: 14 }}>选择窗口关闭行为（隐藏到托盘后分析与抓包任务将继续运行）</div>
-        <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
-          <button className="btn" onClick={() => act('tray')}>⇲ 隐藏到托盘并继续运行</button>
-          <button className="btn danger" onClick={() => act('exit')}>⏻ 退出应用</button>
-          <button className="btn ghost" onClick={async () => { await api.cancelClose(); onClose(); }}>取消</button>
+      <div className="close-modal">
+        <div className="cm-head">
+          <div className="cm-ico" data-tone={choice === 'exit' ? 'danger' : 'ok'}>
+            {choice === 'exit' ? '⏻' : '⇲'}
+          </div>
+          <div style={{ minWidth: 0 }}>
+            <div className="cm-title">{t('close.title')}</div>
+            <div className="cm-sub">{t('close.sub')}</div>
+          </div>
+          <div style={{ flex: 1 }} />
+          <button className="btn sm ghost" onClick={cancel} title={t('close.cancel')}>✕</button>
         </div>
-        <label className="ck" style={{ display: 'flex', alignItems: 'center', gap: 8, marginTop: 14, fontSize: 12.5, cursor: 'pointer' }}>
+
+        <div className="cm-options">
+          <button className="cm-opt" data-active={choice === 'tray' || undefined} onClick={() => setChoice('tray')}>
+            <span className="cm-opt-ico">⇲</span>
+            <span className="cm-opt-body">
+              <b>{t('close.tray')}</b>
+              <small>{t('close.trayDesc')}</small>
+            </span>
+            <span className="cm-radio" />
+          </button>
+          <button className="cm-opt" data-tone="danger" data-active={choice === 'exit' || undefined} onClick={() => setChoice('exit')}>
+            <span className="cm-opt-ico">⏻</span>
+            <span className="cm-opt-body">
+              <b>{t('close.exit')}</b>
+              <small>{t('close.exitDesc')}</small>
+            </span>
+            <span className="cm-radio" />
+          </button>
+        </div>
+
+        <label className="cm-remember">
           <input type="checkbox" checked={remember} onChange={e => setRemember(e.target.checked)} />
-          记住我的选择，下次不再询问
+          {t('close.remember')}
         </label>
+
+        <div className="cm-actions">
+          <button className="btn ghost" onClick={cancel}>{t('close.cancel')}</button>
+          <button className={`btn ${choice === 'exit' ? 'danger' : 'primary'}`} onClick={confirm}>{t('close.confirm')}</button>
+        </div>
       </div>
     </Overlay>
   );
