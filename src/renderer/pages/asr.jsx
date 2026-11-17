@@ -1,25 +1,22 @@
-import React, { useEffect, useMemo, useState } from 'react';
-import { useStore, api, fmtTime, fmtBytes, trunc, registerPages } from '../App.jsx';
+import React, { useEffect, useState } from 'react';
+import { api, fmtBytes, registerPages, useStore } from '../App.jsx';
 
 /* ============================================================
-   语音转写：whisper.cpp 离线引擎 + GGML 模型
-   模型与引擎就位即可直接识别，未就位时给出可执行的安装步骤
+   语音转写（配置页）：引擎 / 模型 / 识别参数
+   实际的转写入口在「通话分析 → 转写」页签
    ============================================================ */
 function AsrPage() {
-  const { state, showToast } = useStore();
-  const { calls } = state;
+  const { showToast } = useStore();
   const [st, setSt] = useState(null);
-  const [sel, setSel] = useState('');
-  const [mode, setMode] = useState('merge');
-  const [q, setQ] = useState('');
-  const [busy, setBusy] = useState(false);
-  const [result, setResult] = useState(null);
+  const [lang, setLang] = useState('zh');
+  const [mode, setMode] = useState(() => localStorage.getItem('mryuga:asrMode') || 'merge');
   const [engineBusy, setEngineBusy] = useState(false);
   const [pct, setPct] = useState(0);
 
   const loadStatus = async () => setSt(await api.asrStatus().catch(() => null));
   useEffect(() => {
     loadStatus();
+    api.settingsGet().then(s => { if (s?.asrLang) setLang(s.asrLang); }).catch(() => {});
     return api.on('asr:engine-progress', p => setPct(p?.pct || 0));
   }, []);
 
@@ -42,12 +39,14 @@ function AsrPage() {
     if (r.ok) { showToast('ok', '已设为当前模型'); loadStatus(); }
   };
 
-  const run = async () => {
-    const c = calls.find(x => `${x.fileId}|${x.callId}` === sel);
-    if (!c) return showToast('err', '请选择要转写的通话');
-    setBusy(true); setResult(null);
-    try { setResult(await api.asrTranscribe({ fileId: c.fileId, callId: c.callId, mode })); }
-    finally { setBusy(false); }
+  const changeLang = async (v) => {
+    setLang(v);
+    await api.settingsSet({ asrLang: v });
+    showToast('ok', '已保存识别语言');
+  };
+  const changeMode = (v) => {
+    setMode(v);
+    localStorage.setItem('mryuga:asrMode', v);
   };
 
   const ready = !!st?.ready;
@@ -95,11 +94,11 @@ function AsrPage() {
 
             {!ready && (
               <div style={{ marginTop: 12, background: 'var(--warn-bg)', border: '1px solid #ecd9b6', borderRadius: 8, padding: '10px 12px', fontSize: 12.3, lineHeight: 1.95, color: 'var(--fg2)' }}>
-                <b>还没有可用的离线识别环境</b>，按下面 3 步准备（全部本机运行、音频不出机）：
+                <b>环境未就绪</b>，按下面 3 步准备（全部本机运行、音频不出机）：
                 <div style={{ marginTop: 6 }}>
-                  1. 点「下载 Windows 引擎」自动获取 whisper.cpp 官方预编译版（约 {st?.engineDownload?.size || '8.5 MB'}，解压到 <span className="mono">models\bin\</span>）；也可「选择程序文件」指定已有的 <span className="mono">whisper-cli.exe / main.exe</span><br />
-                  2. 下载下面的 GGML 模型（推荐 <span className="mono">ggml-small.bin</span>），放进 <span className="mono">models\</span> 或点「选择模型文件」<br />
-                  3. 回到本页点「重新检测」，状态变为「就绪」即可开始转写
+                  1. 点「下载 Windows 引擎」自动获取 whisper.cpp 官方预编译版（约 {st?.engineDownload?.size || '8.5 MB'}，解压到 <span className="mono">models\bin\</span>）<br />
+                  2. 下载 GGML 模型（推荐 <span className="mono">ggml-small.bin</span>，medium 在 CPU 上明显更慢），放进 <span className="mono">models\</span><br />
+                  3. 点「重新检测」，两个徽标都变「就绪」即可去通话页转写
                 </div>
                 <div style={{ fontSize: 11.5, color: 'var(--fg3)', marginTop: 6 }}>
                   说明：官方 GitHub 的 latest 发布有时只带源码；本页固定使用带 Windows 二进制的构建版本。
@@ -145,69 +144,34 @@ function AsrPage() {
 
         <section className="section">
           <div className="section-head">
-            <span className="section-title">开始转写</span>
-            <span className="section-desc">对已导入的通话解码音频后送入本地引擎</span>
+            <span className="section-title">识别参数</span>
+            <span className="section-desc">作为「通话分析 → 转写」的默认参数</span>
           </div>
-          <div style={{ display: 'flex', gap: 10, alignItems: 'center', flexWrap: 'wrap' }}>
-            <select className="input" style={{ flex: 1, minWidth: 260 }} value={sel} onChange={e => setSel(e.target.value)}>
-              <option value="">— 选择通话 —</option>
-              {calls.map(c => (
-                <option key={c.id} value={`${c.fileId}|${c.callId}`}>
-                  {trunc(c.summary.fromUser || '?', 12)} → {trunc(c.summary.toUser || '?', 12)} · {fmtTime(c.summary.tStart)} · {(c.summary.codecs || []).join('/') || '未知编码'}
-                </option>
-              ))}
-            </select>
-            <select className="input" style={{ width: 150 }} value={mode} onChange={e => setMode(e.target.value)}>
-              <option value="merge">合并识别</option>
-              <option value="split">按方向分轨</option>
-            </select>
-            <button className="btn primary" onClick={run} disabled={busy || !sel || !ready}>{busy ? '识别中…' : '开始转写'}</button>
+          <div style={{ display: 'flex', gap: 18, alignItems: 'center', flexWrap: 'wrap' }}>
+            <label style={{ display: 'flex', alignItems: 'center', gap: 8, fontSize: 12.5 }}>
+              识别语言
+              <select className="input" style={{ width: 150, height: 30 }} value={lang} onChange={e => changeLang(e.target.value)}>
+                <option value="zh">中文</option>
+                <option value="auto">自动检测</option>
+                <option value="en">English</option>
+              </select>
+            </label>
+            <label style={{ display: 'flex', alignItems: 'center', gap: 8, fontSize: 12.5 }}>
+              默认模式
+              <select className="input" style={{ width: 150, height: 30 }} value={mode} onChange={e => changeMode(e.target.value)}>
+                <option value="merge">合并识别</option>
+                <option value="split">按方向分轨</option>
+              </select>
+            </label>
+            <span style={{ fontSize: 11.5, color: 'var(--fg3)' }}>
+              CPU 模式下 medium 较慢；追求速度可选 small / base。识别全程本机运行，切换页面不会中断。
+            </span>
           </div>
-          {!ready && <div style={{ fontSize: 11.5, color: 'var(--fg3)', marginTop: 8 }}>环境未就绪时按钮不可用，按左侧步骤准备后可立即使用。</div>}
+          <div style={{ marginTop: 10, fontSize: 12, color: 'var(--fg2)' }}>
+            转写入口已移到「通话分析 → 转写」页签：选中通话后即可开始识别、查看分段文本。
+          </div>
         </section>
-
-        {result && (
-          <section className="section">
-            {result.ok ? (
-              <>
-                <div className="section-head">
-                  <span className="section-title">识别结果</span>
-                  <span className="badge ok">{result.model}</span>
-                  <span className="badge mut">{result.segments?.length || 0} 段</span>
-                  <div className="grow" />
-                  <input className="input" style={{ width: 220 }} placeholder="搜索文本…" value={q} onChange={e => setQ(e.target.value)} />
-                </div>
-                <TranscriptView segments={result.segments || []} q={q} />
-              </>
-            ) : (
-              <>
-                <div className="section-head">
-                  <span className="section-title">无法转写</span>
-                  <span className="badge warn">{result.code || 'error'}</span>
-                </div>
-                <div style={{ fontSize: 12.5, color: 'var(--red)' }}>{result.error}</div>
-                {result.hint && <div style={{ fontSize: 12.3, color: 'var(--fg2)', marginTop: 6, lineHeight: 1.9 }}>{result.hint}</div>}
-              </>
-            )}
-          </section>
-        )}
       </div>
-    </div>
-  );
-}
-
-function TranscriptView({ segments, q }) {
-  const hit = useMemo(() => (q ? segments.filter(s => (s.text || '').includes(q)) : segments), [segments, q]);
-  return (
-    <div style={{ maxHeight: 420, overflow: 'auto' }}>
-      {hit.map((s, i) => (
-        <div key={i} style={{ display: 'flex', gap: 10, padding: '7px 2px', borderBottom: '1px solid var(--line)', fontSize: 13 }}>
-          <span className="mono" style={{ color: 'var(--accent)', minWidth: 68 }}>{s.startFmt || '00:00.0'}</span>
-          {s.ch && s.ch !== 'mix' && <span className="badge mut" style={{ minWidth: 46 }}>{s.ch === 'a' ? '主叫' : '被叫'}</span>}
-          <span style={{ flex: 1, color: 'var(--fg)' }}>{s.text}</span>
-        </div>
-      ))}
-      {hit.length === 0 && <div className="empty">无匹配文本</div>}
     </div>
   );
 }

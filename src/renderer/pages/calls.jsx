@@ -1,6 +1,7 @@
 import React, { useEffect, useMemo, useRef, useState } from 'react';
 import { useStore, api, fmtTime, fmtDateTime, fmtTimeDay, fmtDur, fmtBytes, trunc, registerPages, EmptyDropHint, SevBadge, usePaneSize, Splitter, useMediaQuery } from '../App.jsx';
 import { t } from '../i18n.js';
+import { useAsrJobs, startAsr } from '../asrSession.js';
 
 /* ============================================================
    通话分析页：左列表 + 右详情（流序图 / 报文 / 体检 / 试听 / 导出）
@@ -119,6 +120,7 @@ function CallDetail({ sel }) {
     ['ladder', t('tab.ladder'), (msgs?.msgs?.length || 0) + dtmfCount],
     ['msgs', t('tab.messages'), (msgs?.msgs?.length || 0) + dtmfCount],
     ['audio', t('tab.audio'), null],
+    ['transcript', t('tab.transcript'), null],
     ['export', t('tab.export'), null]
   ];
   const splitTab = tab === 'ladder' || tab === 'msgs';
@@ -174,6 +176,7 @@ function CallDetail({ sel }) {
             : <Loading />)}
           {tab === 'msgs' && (msgs ? <MsgsTab data={msgs} rows={rows} pick={pick} onPick={setPick} /> : <Loading />)}
           {tab === 'audio' && <AudioTab sel={sel} soloKey={audioSoloKey} call={call} />}
+          {tab === 'transcript' && <TranscriptTab sel={sel} call={call} />}
           {tab === 'export' && <ExportTab sel={sel} />}
         </div>
         {splitTab && msgs && !narrow && (
@@ -986,6 +989,102 @@ function MiniWave({ waveform, color }) {
     }
   }, [waveform, color]);
   return <canvas ref={ref} style={{ width: '100%', height: 56, display: 'block', background: '#fff', borderRadius: 6, border: '1px solid var(--line)' }} />;
+}
+
+/* ============================================================
+   转写：在通话详情内发起，任务状态保存在模块级（切页不丢）
+   ============================================================ */
+function TranscriptTab({ sel }) {
+  const jobs = useAsrJobs();
+  const key = `${sel.fileId}|${sel.callId}`;
+  const job = jobs.get(key);
+  const [st, setSt] = useState(null);
+  const [mode, setMode] = useState(() => localStorage.getItem('mryuga:asrMode') || 'merge');
+  const [q, setQ] = useState('');
+
+  useEffect(() => { api.asrStatus().then(setSt).catch(() => {}); }, []);
+
+  const busy = !!job?.busy;
+  const res = job?.result;
+  const ready = !!st?.ready;
+  const pct = Math.round((job?.pct || 0) * 100);
+  const segs = res?.ok ? (q ? res.segments.filter(s => (s.text || '').includes(q)) : res.segments) : [];
+
+  const start = () => {
+    localStorage.setItem('mryuga:asrMode', mode);
+    startAsr({ fileId: sel.fileId, callId: sel.callId, mode });
+  };
+
+  return (
+    <div className="detail-scroll">
+      <div className="audio-shell">
+        <div className="card">
+          <div className="card-title" style={{ flexWrap: 'wrap', gap: 8 }}>
+            语音转写
+            <span className={`badge ${ready ? 'ok' : 'err'}`}>引擎 {ready ? '就绪' : '未配置'}</span>
+            {st?.activeModel && <span className="badge mut">{String(st.activeModel).split(/[\\/]/).pop()}</span>}
+            <div style={{ flex: 1 }} />
+            <select className="input" style={{ width: 132, height: 28 }} value={mode} disabled={busy} onChange={e => setMode(e.target.value)}>
+              <option value="merge">合并识别</option>
+              <option value="split">按方向分轨</option>
+            </select>
+            <button className="btn primary sm" onClick={start} disabled={busy || !ready}>
+              {busy ? (pct > 0 ? `识别中 ${pct}%` : '识别中…') : (res?.ok ? '重新转写' : '开始转写')}
+            </button>
+          </div>
+
+          {!ready && (
+            <div style={{ fontSize: 12, color: 'var(--fg3)', lineHeight: 1.8 }}>
+              还没有可用的识别环境，请先到顶部「语音转写」菜单下载引擎与模型。
+            </div>
+          )}
+
+          {busy && (
+            <div style={{ marginTop: 10 }}>
+              <div className="upd-prog" data-idle={pct < 2 || undefined}><i style={{ width: `${Math.max(4, pct)}%` }} /></div>
+              <div style={{ fontSize: 11.5, color: 'var(--fg3)', marginTop: 5 }}>
+                本机离线识别 · 已用 {fmtElapsed(job?.elapsed)} · 可切换页面，任务会继续
+              </div>
+            </div>
+          )}
+
+          {res && !res.ok && (
+            <div style={{ marginTop: 8, fontSize: 12.5, color: 'var(--red)' }}>
+              {res.error}
+              {res.hint && <div style={{ color: 'var(--fg2)', marginTop: 4 }}>{res.hint}</div>}
+            </div>
+          )}
+        </div>
+
+        {res?.ok && (
+          <div className="card">
+            <div className="card-title" style={{ flexWrap: 'wrap' }}>
+              识别结果
+              <span className="badge ok">{res.model}</span>
+              <span className="badge mut">{res.segments.length} 段</span>
+              <div style={{ flex: 1 }} />
+              <input className="input" style={{ width: 200, height: 28 }} placeholder="搜索文本…" value={q} onChange={e => setQ(e.target.value)} />
+            </div>
+            <div style={{ maxHeight: 420, overflow: 'auto' }}>
+              {segs.map((s, i) => (
+                <div key={i} style={{ display: 'flex', gap: 10, padding: '7px 2px', borderBottom: '1px solid var(--line)', fontSize: 13 }}>
+                  <span className="mono" style={{ color: 'var(--accent)', minWidth: 68 }}>{s.startFmt || '00:00.0'}</span>
+                  {s.ch && s.ch !== 'mix' && <span className="badge mut" style={{ minWidth: 46 }}>{s.ch === 'a' ? '主叫' : '被叫'}</span>}
+                  <span style={{ flex: 1 }}>{s.text}</span>
+                </div>
+              ))}
+              {segs.length === 0 && <div className="empty">无匹配文本</div>}
+            </div>
+          </div>
+        )}
+      </div>
+    </div>
+  );
+}
+
+function fmtElapsed(sec) {
+  const s = Math.max(0, Math.round(sec || 0));
+  return s < 60 ? `${s}s` : `${Math.floor(s / 60)}m ${String(s % 60).padStart(2, '0')}s`;
 }
 
 /* ============================================================

@@ -558,6 +558,8 @@ select.input { cursor: pointer; }
 /* 更新下载进度 */
 .upd-prog { height: 6px; border-radius: 999px; background: var(--bg4); overflow: hidden; }
 .upd-prog > i { display: block; height: 100%; background: var(--accent); transition: width .2s; }
+.upd-prog[data-idle] > i { width: 32% !important; animation: updSlide 1.2s ease-in-out infinite; }
+@keyframes updSlide { 0% { margin-left: -32%; } 100% { margin-left: 100%; } }
 
 /* DTMF 标记 */
 .dtmf-pill {

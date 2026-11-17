@@ -303,15 +303,22 @@ function registerIpc(app, win) {
     return [];
   };
 
-  const runWhisper = (engine, model, wav, outBase) => new Promise((resolve, reject) => {
+  const runWhisper = (engine, model, wav, outBase, opts = {}) => new Promise((resolve, reject) => {
     const legacy = /main\.exe$/i.test(engine);
+    const lang = opts.lang || 'zh';
+    const threads = Math.max(2, Math.min(8, (require('os').cpus().length || 4) - 1));
     const args = legacy
-      ? ['-m', model, '-f', wav, '-l', 'zh', '--output-txt', '--output-json', '--output-file', outBase]
-      : ['-m', model, '-f', wav, '-l', 'zh', '-otxt', '-oj', '-of', outBase, '-np'];
+      ? ['-m', model, '-f', wav, '-l', lang, '-t', String(threads), '--output-txt', '--output-json', '--output-file', outBase]
+      : ['-m', model, '-f', wav, '-l', lang, '-t', String(threads), '-otxt', '-oj', '-of', outBase];
     const p = require('child_process').spawn(engine, args, { windowsHide: true });
     let err = '';
-    p.stderr.on('data', d => { err = (err + d.toString()).slice(-2000); });
-    p.stdout.on('data', d => { err = (err + d.toString()).slice(-2000); });
+    const onChunk = d => {
+      const s = d.toString();
+      err = (err + s).slice(-4000);
+      opts.onLine?.(s);
+    };
+    p.stderr.on('data', onChunk);
+    p.stdout.on('data', onChunk);
     const timer = setTimeout(() => { try { p.kill(); } catch { /* 忽略 */ } reject(new Error('识别超时（10 分钟）')); }, 10 * 60 * 1000);
     p.on('error', e => { clearTimeout(timer); reject(e); });
     p.on('exit', code => {
@@ -444,7 +451,20 @@ function registerIpc(app, win) {
     return true;
   });
 
-  ipcMain.handle('asr:transcribe', async (_e, { fileId, callId, localFile, mode }) => {
+  const mixStreams = (a, b) => {
+    if (!a?.pcm) return b;
+    if (!b?.pcm) return a;
+    if (a.sampleRate !== b.sampleRate) return a.pcm.length >= b.pcm.length ? a : b;
+    const n = Math.max(a.pcm.length, b.pcm.length);
+    const out = new Int16Array(n);
+    for (let i = 0; i < n; i++) {
+      const v = (a.pcm[i] || 0) + (b.pcm[i] || 0);
+      out[i] = v > 32767 ? 32767 : (v < -32768 ? -32768 : v);
+    }
+    return { ...a, pcm: out };
+  };
+
+  ipcMain.handle('asr:transcribe', async (e, { fileId, callId, localFile, mode, key }) => {
     const engine = findAsrEngine();
     if (!engine) {
       return {
@@ -482,22 +502,46 @@ function registerIpc(app, win) {
         const media = await analyzeMedia(s, callId);
         const plan = mode === 'split'
           ? [['a', media.streams.a], ['b', media.streams.b]]
-          : [['mix', media.streams.a || media.streams.b]];
+          : [['mix', mixStreams(media.streams.a, media.streams.b)]];
         for (const [ch, st] of plan) {
           if (!st?.pcm) continue;
           const wav = path.join(tmpDir, `asr-${Date.now()}-${ch}.wav`);
           fs.writeFileSync(wav, encodeWav(st.pcm, st.sampleRate));
-          jobs.push({ ch, wav }); temps.push(wav);
+          jobs.push({ ch, wav, dur: st.pcm.length / st.sampleRate }); temps.push(wav);
         }
         if (!jobs.length) {
           return { ok: false, code: 'audio', error: '该通话没有可解码的音频（编码暂不支持或未捕获 RTP）' };
         }
       }
 
+      const startedAt = Date.now();
+      const totalDur = jobs.reduce((n, j) => n + (j.dur || 0), 0);
+      let doneDur = 0;
+      const notify = (pct, extra) => {
+        if (!e?.sender || e.sender.isDestroyed()) return;
+        e.sender.send('asr:progress', {
+          key, pct: Math.max(0, Math.min(1, pct)),
+          elapsed: Math.round((Date.now() - startedAt) / 1000),
+          ...extra
+        });
+      };
+      notify(0);
+
       const segments = [];
       for (const job of jobs) {
         const base = job.wav.replace(/\.wav$/i, '');
-        await runWhisper(engine, model, job.wav, base);
+        await runWhisper(engine, model, job.wav, base, {
+          lang: readSettings().asrLang || 'zh',
+          onLine: (txt) => {
+            if (!totalDur) return;
+            const m = /\[(\d\d):(\d\d):(\d\d)\.(\d{3})\s*-->\s*(\d\d):(\d\d):(\d\d)\.(\d{3})\]/.exec(txt);
+            if (!m) return;
+            const end = (+m[5]) * 3600 + (+m[6]) * 60 + (+m[7]) + (+m[8]) / 1000;
+            notify((doneDur + Math.min(end, job.dur || 0)) / totalDur);
+          }
+        });
+        doneDur += job.dur || 0;
+        notify(totalDur ? doneDur / totalDur : 0.99);
         for (const sg of readWhisperSegments(base)) segments.push({ ch: job.ch, ...sg });
       }
       segments.sort((a, b) => a.start - b.start);

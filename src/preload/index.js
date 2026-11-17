@@ -60,7 +60,7 @@ contextBridge.exposeInMainWorld('mryuga', {
   paths: () => ipcRenderer.invoke('app:paths'),
   // 事件
   on: (channel, fn) => {
-    const allowed = ['task:started', 'task:progress', 'task:done', 'task:error', 'app:close-request', 'app:open-files', 'update:available', 'update:progress', 'asr:engine-progress', 'live:stats', 'live:snapshot', 'live:log', 'live:stopped'];
+    const allowed = ['task:started', 'task:progress', 'task:done', 'task:error', 'app:close-request', 'app:open-files', 'update:available', 'update:progress', 'asr:engine-progress', 'asr:progress', 'live:stats', 'live:snapshot', 'live:log', 'live:stopped'];
     if (allowed.includes(channel)) {
       const listener = (_e, payload) => fn(payload);
       ipcRenderer.on(channel, listener);

@@ -4,6 +4,24 @@ All notable changes to this project are documented in this file.
 The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and this project
 adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.0.10] — 2026-11-17
+
+### Added
+- **Transcript tab in call analysis** — 通话分析 now has a 转写 tab: pick merge / per-direction mode, start
+  transcription, watch progress and elapsed time, and read searchable segments with channel badges.
+- Transcription settings live on the 语音转写 page: recognition language (中文 / 自动 / English), default mode,
+  model recommendations and engine setup.
+
+### Fixed
+- **Merge mode only transcribed one direction** — both RTP directions are now mixed into one WAV (with
+  clipping protection) instead of falling back to the caller stream.
+
+### Changed
+- Transcription tasks are kept in a module-level session, so switching pages or tabs no longer cancels or
+  hides the running job or its result.
+- whisper.cpp is started with CPU thread count and segment timestamps are parsed for real progress; the UI
+  also shows elapsed time and explains that `medium` is slow on CPU.
+
 ## [1.0.9] — 2026-11-17
 
 ### Added
@@ -163,6 +181,7 @@ adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 - No audio in dual-channel playback for captures without SDP (direction slot collision).
 - Layout imbalance on very wide displays and lack of stacking on narrow windows.
 
+[1.0.10]: https://github.com/Super-Gouba/m-ryuga/releases/tag/v1.0.10
 [1.0.9]: https://github.com/Super-Gouba/m-ryuga/releases/tag/v1.0.9
 [1.0.8]: https://github.com/Super-Gouba/m-ryuga/releases/tag/v1.0.8
 [1.0.7]: https://github.com/Super-Gouba/m-ryuga/releases/tag/v1.0.7
