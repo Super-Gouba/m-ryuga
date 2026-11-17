@@ -66,6 +66,20 @@ export function fmtTime(us) {
   const p = (n, w = 2) => String(n).padStart(w, '0');
   return `${p(d.getHours())}:${p(d.getMinutes())}:${p(d.getSeconds())}.${p(d.getMilliseconds(), 3)}`;
 }
+/** 完整日期时间：YYYY-MM-DD HH:MM:SS.mmm */
+export function fmtDateTime(us) {
+  if (us == null) return '—';
+  const d = new Date(us / 1000);
+  const p = (n, w = 2) => String(n).padStart(w, '0');
+  return `${d.getFullYear()}-${p(d.getMonth() + 1)}-${p(d.getDate())} ${p(d.getHours())}:${p(d.getMinutes())}:${p(d.getSeconds())}.${p(d.getMilliseconds(), 3)}`;
+}
+/** 列表用紧凑日期时间：MM-DD HH:MM:SS */
+export function fmtTimeDay(us) {
+  if (us == null) return '--:--:--';
+  const d = new Date(us / 1000);
+  const p = (n) => String(n).padStart(2, '0');
+  return `${p(d.getMonth() + 1)}-${p(d.getDate())} ${p(d.getHours())}:${p(d.getMinutes())}:${p(d.getSeconds())}`;
+}
 export function fmtDur(sec) {
   if (sec == null) return '未知';
   const s = Math.round(sec);

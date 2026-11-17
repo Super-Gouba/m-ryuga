@@ -1,5 +1,5 @@
 import React, { useEffect, useMemo, useRef, useState } from 'react';
-import { useStore, api, fmtTime, fmtDur, fmtBytes, trunc, registerPages, EmptyDropHint, SevBadge, usePaneSize, Splitter, useMediaQuery } from '../App.jsx';
+import { useStore, api, fmtTime, fmtDateTime, fmtTimeDay, fmtDur, fmtBytes, trunc, registerPages, EmptyDropHint, SevBadge, usePaneSize, Splitter, useMediaQuery } from '../App.jsx';
 import { t } from '../i18n.js';
 
 /* ============================================================
@@ -70,7 +70,7 @@ function CallsPage() {
                   <span className="who">{s.toUser || '未知'}</span>
                 </div>
                 <div className="call-meta">
-                  <span className="mono">{fmtTime(s.tStart).slice(0, 8)}</span>
+                  <span className="mono">{fmtTimeDay(s.tStart)}</span>
                   <span className="m-sep mono">{s.connDurationSec != null ? fmtDur(s.connDurationSec) : t('list.durationUnknown')}</span>
                   <span className="m-sep">{ended || t('list.notEnded')}</span>
                 </div>
@@ -136,7 +136,7 @@ function CallDetail({ sel }) {
             Call-ID <b title={call.callId} style={{ maxWidth: 420, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{trunc(call.callId, 46)}</b>
           </div>
         </div>
-        <div className="dh-kv">{t('detail.start')} <b>{fmtTime(s.tStart)}</b></div>
+        <div className="dh-kv">{t('detail.start')} <b>{fmtDateTime(s.tStart)}</b></div>
         <div className="dh-kv">{t('detail.duration')} <b>{s.connDurationSec != null ? fmtDur(s.connDurationSec) : t('list.durationUnknown')}</b></div>
         <div className="dh-kv">{t('detail.end')} <b>{s.endStatus ? `SIP ${s.endStatus}` : s.ended ? 'BYE' : '—'}</b></div>
         {(s.codecs || []).length > 0 && <div className="dh-kv">{t('detail.codec')} <b>{s.codecs.join(' / ')}</b></div>}
@@ -246,8 +246,8 @@ function OverviewTab({ call, msgs, sel }) {
             <span className="mono" style={{ wordBreak: 'break-all' }}>{file?.fileName || '—'}</span>
             <b>{t('ov.size')}</b><span className="mono">{fmtBytes(stats.bytes ?? file?.size)}</span>
             <b>{t('ov.packets')}</b><span className="mono">{total.toLocaleString()}</span>
-            <b>{t('ov.first')}</b><span className="mono">{fmtTime(stats.firstUs)}</span>
-            <b>{t('ov.last')}</b><span className="mono">{fmtTime(stats.lastUs)}</span>
+            <b>{t('ov.first')}</b><span className="mono">{fmtDateTime(stats.firstUs)}</span>
+            <b>{t('ov.last')}</b><span className="mono">{fmtDateTime(stats.lastUs)}</span>
             <b>{t('ov.span')}</b>
             <span className="mono">{spanSec ? (days ? `${days}d` : fmtDur(spanSec)) : '—'}</span>
             <b>{t('ov.state')}</b>
@@ -260,7 +260,7 @@ function OverviewTab({ call, msgs, sel }) {
           <div className="kvl">
             <b>{t('ov.caller')}</b><span className="mono">{s.fromUser || '—'}</span>
             <b>{t('ov.callee')}</b><span className="mono">{s.toUser || '—'}</span>
-            <b>{t('ov.start')}</b><span className="mono">{fmtTime(s.tStart)}</span>
+            <b>{t('ov.start')}</b><span className="mono">{fmtDateTime(s.tStart)}</span>
             <b>{t('ov.end')}</b><span>{s.endStatus ? `SIP ${s.endStatus}` : s.ended ? 'BYE' : '—'}</span>
             <b>{t('ov.duration')}</b><span className="mono">{s.connDurationSec != null ? fmtDur(s.connDurationSec) : t('list.durationUnknown')}</span>
             <b>{t('ov.codec')}</b><span>{s.codecs?.join(' / ') || t('ov.noSdp')}</span>
@@ -269,7 +269,7 @@ function OverviewTab({ call, msgs, sel }) {
             <span style={{ display: 'flex', alignItems: 'center', gap: 5, flexWrap: 'wrap' }}>
               {(msgs?.dtmf || []).length === 0
                 ? <span style={{ color: 'var(--fg3)' }}>{t('ov.none')}</span>
-                : (msgs.dtmf.map((d, i) => <span key={i} className="dtmf-pill" title={`${d.via} · ${fmtTime(d.startUs)}`}>{d.digit}</span>))}
+                : (msgs.dtmf.map((d, i) => <span key={i} className="dtmf-pill" title={`${d.via} · ${fmtDateTime(d.startUs)}`}>{d.digit}</span>))}
               {(msgs?.dtmf || []).length > 0 && <span style={{ color: 'var(--fg3)', fontSize: 11.5 }}>×{msgs.dtmf.length}</span>}
             </span>
             <b>{t('ov.dtmfSeq')}</b>
@@ -421,7 +421,7 @@ function LadderDiagram({ data, rows, pick, onPick }) {
                 <rect x={mid - 52} y={y - 10} width={104} height={20} rx={10} fill="var(--warn-bg)" stroke="#ecd9b6" />
                 <text x={mid} y={y + 4} textAnchor="middle" fontSize={11} fontWeight="700" fill="var(--amber)"
                   fontFamily="var(--font-mono)">按键 {d.digit}</text>
-                <title>{`DTMF 按键 ${d.digit} · ${d.via} · ${fmtTime(r.tsUs)}`}</title>
+                <title>{`DTMF 按键 ${d.digit} · ${d.via} · ${fmtDateTime(r.tsUs)}`}</title>
               </g>
             );
           }
@@ -478,7 +478,7 @@ function LadderDiagram({ data, rows, pick, onPick }) {
                 fill="var(--fg3)" fontFamily="var(--font-mono)">{m.src.split(':').pop()}</text>
               <text x={x2 + dir * 7} y={y + 3.5} textAnchor={dir === 1 ? 'start' : 'end'} fontSize={9}
                 fill="var(--fg3)" fontFamily="var(--font-mono)">{m.dst.split(':').pop()}</text>
-              <title>{`${msgLabel(m)}  ·  ${fmtTime(r.tsUs)}\n${m.src} → ${m.dst}\nCall-ID: ${m.callId || ''}`}</title>
+              <title>{`${msgLabel(m)}  ·  ${fmtDateTime(r.tsUs)}\n${m.src} → ${m.dst}\nCall-ID: ${m.callId || ''}`}</title>
             </g>
           );
         })}
@@ -518,7 +518,7 @@ function MsgPane({ item }) {
             <div className="mp-title" style={{ color: 'var(--amber)' }}>DTMF 按键 {d.digit}</div>
             {expandBtn}
           </div>
-          <div className="mp-row">时间：<b>{fmtTime(d.startUs)}</b></div>
+          <div className="mp-row">时间：<b>{fmtDateTime(d.startUs)}</b></div>
           <div className="mp-row">通道：<b>{d.via}</b></div>
           {d.durationMs != null && <div className="mp-row">时长：<b>{Math.round(d.durationMs)} ms</b></div>}
           {d.src && <div className="mp-row">源：<b>{d.src}</b>　目的：<b>{d.dst}</b></div>}
@@ -582,7 +582,7 @@ function MsgPane({ item }) {
           <div className="mp-title" style={{ color: clsColor(msg.cls) }}>{msgLabel(msg)}</div>
           {expandBtn}
         </div>
-        <div className="mp-row">时间：<b>{fmtTime(msg.tsUs)}</b> · UDP</div>
+        <div className="mp-row">时间：<b>{fmtDateTime(msg.tsUs)}</b> · UDP</div>
         <div className="mp-row">源：<b>{msg.src}</b>　目的：<b>{msg.dst}</b></div>
         <div className="mp-actions">
           <button className="btn sm" onClick={copy}>复制原文</button>
@@ -632,7 +632,7 @@ function MessageModal({ item, onClose }) {
       meta.push(['STATUS', `${m.status}${m.reason ? ' ' + m.reason : ''}`], ['METHOD', m.cseqMethod || '—']);
     }
     meta.push(
-      ['TIME', fmtTime(m.tsUs)],
+      ['TIME', fmtDateTime(m.tsUs)],
       ['SRC', m.src], ['DST', m.dst],
       ['CSEQ', String(m.cseq ?? '—')],
       ['CALL-ID', m.callId || '—'],
@@ -646,7 +646,7 @@ function MessageModal({ item, onClose }) {
     const d = item.event;
     title = `DTMF ${d.digit}`;
     meta.push(
-      ['DIGIT', d.digit], ['TIME', fmtTime(d.startUs)],
+      ['DIGIT', d.digit], ['TIME', fmtDateTime(d.startUs)],
       ['CHANNEL', d.via], ['DURATION', d.durationMs != null ? `${Math.round(d.durationMs)} ms` : '—'],
       ['SRC', d.src || '—'], ['DST', d.dst || '—']
     );
@@ -657,7 +657,7 @@ function MessageModal({ item, onClose }) {
     meta.push(
       ['CODEC', md.codec], ['PACKETS', String(md.packets)],
       ['SRC', md.src], ['DST', md.dst],
-      ['START', fmtTime(md.startUs)], ['END', fmtTime(md.endUs)],
+      ['START', fmtDateTime(md.startUs)], ['END', fmtDateTime(md.endUs)],
       ['SPAN', md.endUs ? `${((md.endUs - md.startUs) / 1e6).toFixed(1)} s` : '—'],
       ['LOST', String(md.lost || 0)],
       ['JITTER', md.jitterMs != null ? `${Number(md.jitterMs).toFixed(1)} ms` : '—']
@@ -828,7 +828,7 @@ function MsgsTab({ data, rows, pick, onPick }) {
                 return (
                   <tr key={`d${no}`} className={sel ? 'sel' : ''} onClick={() => onPick({ type: 'dtmf', idx: r.idx })}>
                     <td className="mono" style={{ color: 'var(--fg3)' }}>{no}</td>
-                    <td className="mono">{fmtTime(d.startUs)}</td>
+                    <td className="mono">{fmtDateTime(d.startUs)}</td>
                     <td><span className="dtmf-pill">DTMF 按键 {d.digit}</span> <span style={{ color: 'var(--fg3)', fontSize: 11.5 }}>{d.via}</span></td>
                     <td className="mono" style={{ color: 'var(--fg3)', fontSize: 11.5 }}>{d.src || '—'} → {d.dst || '—'}</td>
                   </tr>
@@ -838,7 +838,7 @@ function MsgsTab({ data, rows, pick, onPick }) {
               return (
                 <tr key={`s${no}`} className={sel ? 'sel' : ''} onClick={() => onPick({ type: 'sip', idx: r.idx })}>
                   <td className="mono" style={{ color: 'var(--fg3)' }}>{no}</td>
-                  <td className="mono">{fmtTime(m.tsUs)}</td>
+                  <td className="mono">{fmtDateTime(m.tsUs)}</td>
                   <td className={`cls-${m.cls}`} style={{ fontWeight: 600 }}>{m.startLine}</td>
                   <td className="mono" style={{ color: 'var(--fg3)', fontSize: 11.5 }}>{m.src} → {m.dst}</td>
                 </tr>
@@ -878,9 +878,9 @@ function CheckTab({ call, sel }) {
       <div className="card">
         <div className="card-title">{t('diag.timeline')}</div>
         <div className="kvl">
-          <b>{t('ov.start')}</b><span className="mono">{fmtTime(s.tStart)}</span>
-          <b>{t('diag.connect')}</b><span className="mono">{s.tConnect ? fmtTime(s.tConnect) : '—'}</span>
-          <b>{t('ov.last')}</b><span className="mono">{s.tEnd ? fmtTime(s.tEnd) : '—'}</span>
+          <b>{t('ov.start')}</b><span className="mono">{fmtDateTime(s.tStart)}</span>
+          <b>{t('diag.connect')}</b><span className="mono">{s.tConnect ? fmtDateTime(s.tConnect) : '—'}</span>
+          <b>{t('ov.last')}</b><span className="mono">{s.tEnd ? fmtDateTime(s.tEnd) : '—'}</span>
           <b>{t('diag.ring')}</b><span className="mono">{s.ringingMs ? (s.ringingMs / 1000).toFixed(1) + 's' : '—'}</span>
           <b>{t('ov.duration')}</b><span className="mono">{s.connDurationSec != null ? fmtDur(s.connDurationSec) : t('list.durationUnknown')}</span>
           <b>{t('ov.end')}</b>
@@ -958,7 +958,7 @@ function MediaOverview({ media }) {
           ? (
             <div style={{ display: 'flex', flexWrap: 'wrap', gap: 5 }}>
               {media.dtmf.map((d, i) => (
-                <span key={i} className="badge info mono" title={`${fmtTime(d.startUs)} · ${d.via}`}>{d.digit}</span>
+                <span key={i} className="badge info mono" title={`${fmtDateTime(d.startUs)} · ${d.via}`}>{d.digit}</span>
               ))}
             </div>
           )
@@ -1042,12 +1042,21 @@ function AudioAnalysis({ media, soloKey, call }) {
     const lost = sts.reduce((n, s) => n + (s.lost || 0), 0);
     const jitter = Math.max(0, ...sts.map(s => s.jitterMs || 0));
     const marks = [];
-    for (const [slot, s] of tracks) for (const m of (s.marks || [])) marks.push({ ...m, slot });
+    const cap = Math.max(1, totalSec) * 1000;
+    for (const [slot, s] of tracks) {
+      for (const m of (s.marks || [])) {
+        // 时间戳异常回退可能产生超大 gap，按音频时长截断，避免统计失真
+        marks.push({ ...m, ms: Math.min(Math.max(0, m.ms || 0), cap), slot });
+      }
+    }
     const stalls = marks.filter(m => (m.ms || 0) >= 200);
     const longest = marks.reduce((n, m) => Math.max(n, m.ms || 0), 0);
     const totalPkts = packets + lost;
     return { packets, lost, lostPct: totalPkts ? (lost / totalPkts) * 100 : 0, jitter, stalls: stalls.length, longest, marks };
-  }, [media]);
+  }, [media, totalSec]);
+
+  const dtmfAll = media.dtmf || [];
+  const dtmfOf = key => dtmfAll.filter(d => !d.src || String(key).startsWith(d.src + '>'));
 
   const buildAudio = async () => {
     if (nodesRef.current) return nodesRef.current;
@@ -1125,7 +1134,7 @@ function AudioAnalysis({ media, soloKey, call }) {
             <div className="audio-sub mono" title={call?.callId}>Call-ID {trunc(call?.callId || '—', 56)}</div>
           </div>
           <div style={{ flex: 1 }} />
-          <div className="audio-sub mono">{t('detail.start')} {fmtTime(call?.summary?.tStart)}</div>
+          <div className="audio-sub mono">{t('detail.start')} {fmtDateTime(call?.summary?.tStart)}</div>
         </div>
         <div className="audio-stats">
           <Stat label={t('audio.total')} value={`${totalSec.toFixed(2)} s`} />
@@ -1162,6 +1171,7 @@ function AudioAnalysis({ media, soloKey, call }) {
           <span className="aleg"><i style={{ background: colors.a }} />{t('audio.amp')}</span>
           <span className="aleg"><i style={{ background: 'rgba(214,120,40,.55)' }} />{t('audio.lossMark')}</span>
           <span className="aleg"><i style={{ background: 'rgba(140,150,164,.35)' }} />{t('audio.silence')}</span>
+          <span className="aleg"><i style={{ background: '#d9a441' }} />{t('audio.dtmfMark')}</span>
           <span className="aleg"><i style={{ background: '#dc2626' }} />{t('audio.playhead')}</span>
         </div>
         {tracks.map(([slot, st]) => (
@@ -1181,7 +1191,7 @@ function AudioAnalysis({ media, soloKey, call }) {
               </div>
             </div>
             <AudioWave
-              waveform={st.waveform} marks={st.marks} firstUs={st.firstUs}
+              waveform={st.waveform} marks={st.marks} dtmf={dtmfOf(st.key)} firstUs={st.firstUs}
               dur={st.pcm ? st.pcm.byteLength / 2 / st.sampleRate : totalSec}
               totalSec={totalSec} cur={cur} color={colors[slot]} onSeek={seekTo}
             />
@@ -1222,8 +1232,8 @@ function fmtClock(s) {
   return `${String(m).padStart(2, '0')}:${String(ss).padStart(2, '0')}.${String(ms).padStart(2, '0')}`;
 }
 
-/* 波形：时间轴 + 振幅包络 + 静音区 + 丢包/断流标记 + 播放头 */
-function AudioWave({ waveform, marks = [], firstUs, dur = 0, totalSec, cur, color, onSeek }) {
+/* 波形：时间轴 + 振幅包络 + 静音区 + 丢包/断流标记 + DTMF 按键 + 播放头 */
+function AudioWave({ waveform, marks = [], dtmf = [], firstUs, dur = 0, totalSec, cur, color, onSeek }) {
   const ref = useRef(null);
   const [hover, setHover] = useState(null);
 
@@ -1267,16 +1277,19 @@ function AudioWave({ waveform, marks = [], firstUs, dur = 0, totalSec, cur, colo
       }
     }
 
-    // 丢包 / 断流标记
+    // 丢包 / 断流标记（按音频时长截断异常时间戳跳变）
     for (const m of marks) {
       const sec = firstUs != null ? Math.max(0, (m.us - firstUs) / 1e6) : 0;
+      const gapMs = Math.min(Math.max(0, m.ms || 0), span * 1000);
       const x0 = xOf(sec);
-      const x1 = xOf(sec + Math.max(0.02, (m.ms || 0) / 1000));
+      const x1 = xOf(sec + Math.max(0.02, gapMs / 1000));
       ctx.fillStyle = 'rgba(214,120,40,.16)';
       ctx.fillRect(x0, 0, Math.max(2, x1 - x0), H);
       ctx.strokeStyle = m.type === 'gap' ? 'rgba(190,90,30,.55)' : 'rgba(214,160,60,.6)';
       ctx.beginPath(); ctx.moveTo(x0 + 0.5, 0); ctx.lineTo(x0 + 0.5, H); ctx.stroke();
     }
+
+    // DTMF 按键标记在绘制完振幅后叠加（见下方）
 
     // 振幅包络（按像素列取峰值）
     if (waveform?.length) {
@@ -1297,13 +1310,38 @@ function AudioWave({ waveform, marks = [], firstUs, dur = 0, totalSec, cur, colo
     ctx.strokeStyle = '#dde5ef';
     ctx.beginPath(); ctx.moveTo(0, H / 2 + 0.5); ctx.lineTo(W, H / 2 + 0.5); ctx.stroke();
 
+    // DTMF 按键标记：虚线定位 + 顶部按键值（相邻按键错开高度避免重叠）
+    dtmf.forEach((d, i) => {
+      if (firstUs == null || d.startUs == null) return;
+      const sec = (d.startUs - firstUs) / 1e6;
+      if (sec < 0 || sec > span) return;
+      const x = xOf(sec);
+      ctx.save();
+      ctx.strokeStyle = 'rgba(190,140,40,.8)';
+      ctx.lineWidth = 1;
+      ctx.setLineDash([3, 3]);
+      ctx.beginPath(); ctx.moveTo(x + 0.5, 0); ctx.lineTo(x + 0.5, H); ctx.stroke();
+      ctx.restore();
+      const cy = i % 2 === 0 ? 4 : 21;
+      const cx = Math.max(9, Math.min(W - 9, x));
+      ctx.beginPath();
+      if (ctx.roundRect) ctx.roundRect(cx - 8, cy, 16, 15, 4); else ctx.rect(cx - 8, cy, 16, 15);
+      ctx.fillStyle = '#fbf3e4'; ctx.fill();
+      ctx.strokeStyle = '#e7cfa4'; ctx.lineWidth = 1; ctx.stroke();
+      ctx.fillStyle = '#8a5a12';
+      ctx.font = 'bold 10px "JetBrains Mono", Consolas, monospace';
+      ctx.textAlign = 'center';
+      ctx.fillText(String(d.digit), cx, cy + 11);
+      ctx.textAlign = 'start';
+    });
+
     // 播放头
     const px = xOf(cur);
     ctx.strokeStyle = '#dc2626'; ctx.lineWidth = 1.5;
     ctx.beginPath(); ctx.moveTo(px, 0); ctx.lineTo(px, H); ctx.stroke();
     ctx.fillStyle = '#dc2626';
     ctx.beginPath(); ctx.arc(px, 6, 3, 0, Math.PI * 2); ctx.fill();
-  }, [waveform, marks, firstUs, dur, totalSec, cur, color]);
+  }, [waveform, marks, dtmf, firstUs, dur, totalSec, cur, color]);
 
   const toSec = e => {
     const r = ref.current.getBoundingClientRect();
