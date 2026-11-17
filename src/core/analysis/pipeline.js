@@ -34,6 +34,7 @@ async function analyzeFile(filePath, fileId, onProgress, signal) {
   const head = await readHead(filePath);
   if (looksLikeTextSip(head)) return analyzeTextLog(filePath, fileId, onProgress, signal, stat);
   const analyzer = new CallAnalyzer(fileId);
+  analyzer.stats.bytes = stat.size; // 概览「文件大小」直接取磁盘文件大小
   let lastPct = -1;
   let abortedMidway = false;
   const t0 = Date.now();

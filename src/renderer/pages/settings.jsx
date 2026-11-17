@@ -253,30 +253,126 @@ function SettingsPage() {
   );
 }
 
-/* ---------- 更新弹窗 ---------- */
+/* ---------- 更新弹窗：格式化说明 + 一键下载安装 ---------- */
 function UpdateModal({ info, onClose }) {
+  const [phase, setPhase] = useState('idle'); // idle | downloading | installing | error
+  const [pct, setPct] = useState(0);
+  const [err, setErr] = useState('');
+  const setup = (info.assets || []).find(a => /Setup/i.test(a.name)) || (info.assets || []).find(a => /\.exe$/i.test(a.name));
+
+  useEffect(() => api.on('update:progress', p => setPct(p?.pct || 0)), []);
+
+  const start = async () => {
+    if (!info.assets?.length) { api.updateOpenRelease(info.url); return; }
+    setErr(''); setPct(0); setPhase('downloading');
+    const r = await api.updateDownload(info.assets);
+    if (!r.ok) { setErr(r.error || '下载失败'); setPhase('error'); return; }
+    setPhase('installing');
+    const inst = await api.updateInstall(r.file);
+    if (!inst.ok) { setErr(inst.error || '启动安装包失败'); setPhase('error'); }
+  };
+
+  const busy = phase === 'downloading' || phase === 'installing';
+  const btnText = phase === 'downloading' ? `下载中 ${Math.round(pct * 100)}%`
+    : phase === 'installing' ? '正在启动安装…' : '下载并安装';
+
   return (
     <Overlay>
-      <div className="card" style={{ width: 560, maxWidth: '92vw', maxHeight: '72vh', display: 'flex', flexDirection: 'column', padding: 20 }}>
+      <div className="card" style={{ width: 620, maxWidth: '94vw', maxHeight: '80vh', display: 'flex', flexDirection: 'column', padding: 20 }}>
         <div style={{ display: 'flex', alignItems: 'baseline', gap: 10 }}>
           <span style={{ fontSize: 17, fontWeight: 700, color: 'var(--fg)' }}>发现新版本</span>
           <span className="badge ok">v{info.latest}</span>
           {info.current && <span style={{ color: 'var(--fg3)', fontSize: 12 }}>当前 v{info.current}</span>}
           <div style={{ flex: 1 }} />
-          <button className="btn sm ghost" onClick={onClose}>✕</button>
+          <button className="btn sm ghost" onClick={onClose} disabled={busy}>✕</button>
         </div>
-        <div style={{ flex: 1, overflow: 'auto', margin: '12px 0', background: 'var(--bg3)', borderRadius: 8, padding: 14, whiteSpace: 'pre-wrap', fontSize: 12.5, lineHeight: 1.8, color: 'var(--fg2)' }}>
-          {info.notes || '（发布说明为空）'}
+
+        <div style={{ margin: '12px 0', background: 'var(--bg3)', borderRadius: 8, padding: '12px 14px', flex: 1, overflow: 'auto' }}>
+          <ReleaseNotes body={info.notes} />
         </div>
-        <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
-          <button className="btn primary" onClick={() => { api.updateOpenRelease(info.url); onClose(); }}>浏览器打开发布页</button>
-          <button className="btn" onClick={onClose}>稍后提醒</button>
-          <button className="btn ghost" onClick={() => { api.updateIgnore(info.latest); onClose(); }}>忽略此版本</button>
-          <button className="btn ghost" onClick={() => { api.updateSetStartup(false); onClose(); }}>关闭启动检查</button>
+
+        {setup && (
+          <div style={{ fontSize: 11.5, color: 'var(--fg3)', marginBottom: 8 }}>
+            {setup.name} · {fmtBytes(setup.size || 0)} · 下载完成后自动安装并重启
+          </div>
+        )}
+        {phase === 'downloading' && (
+          <div className="upd-prog" style={{ marginBottom: 10 }}><i style={{ width: `${Math.round(pct * 100)}%` }} /></div>
+        )}
+        {err && <div style={{ fontSize: 12, color: 'var(--red)', marginBottom: 8 }}>{err}</div>}
+
+        <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', alignItems: 'center' }}>
+          <button className="btn primary" onClick={start} disabled={busy}>{btnText}</button>
+          <button className="btn" onClick={onClose} disabled={busy}>稍后提醒</button>
+          <button className="btn ghost" onClick={() => { api.updateIgnore(info.latest); onClose(); }} disabled={busy}>忽略此版本</button>
+          <button className="btn ghost" onClick={() => { api.updateSetStartup(false); onClose(); }} disabled={busy}>关闭启动检查</button>
+          <div style={{ flex: 1 }} />
+          <button className="linkbtn" onClick={() => api.updateOpenRelease(info.url)}>发布页 ↗</button>
         </div>
       </div>
     </Overlay>
   );
+}
+
+/* 发布说明：轻量 Markdown 渲染（标题 / 列表 / 粗体 / 行内代码），自动隐藏 Downloads 段 */
+function ReleaseNotes({ body }) {
+  const lines = String(body || '').split(/\r?\n/);
+  const out = [];
+  let i = 0;
+  while (i < lines.length) {
+    const line = lines[i].replace(/\s+$/, '');
+    i++;
+    if (/^#{2,4}\s*(Downloads?|下载)\s*$/i.test(line.trim())) break;
+    if (/^\|/.test(line.trim()) || /^[-*_]{3,}$/.test(line.trim()) || /^>\s?/.test(line.trim())) continue;
+    if (!line.trim()) { out.push(<div key={`g${i}`} style={{ height: 5 }} />); continue; }
+
+    const h = /^(#{1,4})\s+(.+)$/.exec(line);
+    if (h) {
+      const lv = h[1].length;
+      out.push(
+        <div key={`h${i}`} style={{ fontSize: lv <= 2 ? 14 : 12.5, fontWeight: 700, color: 'var(--fg)', margin: lv <= 2 ? '10px 0 4px' : '9px 0 3px' }}>
+          {inlineFmt(h[2])}
+        </div>
+      );
+      continue;
+    }
+
+    const b = /^[-*]\s+(.+)$/.exec(line.trim());
+    if (b) {
+      // 合并 GitHub 正文里的软换行，保证一条要点连续显示
+      let text = b[1];
+      while (i < lines.length) {
+        const next = lines[i].trim();
+        if (!next || /^(#{1,4}\s|[-*]\s|\||>)/.test(next)) break;
+        text += ' ' + next;
+        i++;
+      }
+      out.push(
+        <div key={`b${i}`} style={{ display: 'flex', gap: 7, lineHeight: 1.75 }}>
+          <span style={{ color: 'var(--accent)', flexShrink: 0 }}>•</span>
+          <span>{inlineFmt(text)}</span>
+        </div>
+      );
+      continue;
+    }
+    out.push(<div key={`p${i}`} style={{ lineHeight: 1.75 }}>{inlineFmt(line)}</div>);
+  }
+  return <div style={{ fontSize: 12.5, color: 'var(--fg2)' }}>{out.length ? out : '（发布说明为空）'}</div>;
+}
+
+function inlineFmt(text) {
+  const src = String(text).replace(/\[([^\]]+)\]\(([^)]+)\)/g, '$1');
+  const parts = [];
+  const re = /(\*\*[^*]+\*\*|`[^`]+`)/g;
+  let last = 0, m, k = 0;
+  while ((m = re.exec(src))) {
+    if (m.index > last) parts.push(src.slice(last, m.index));
+    if (m[0].startsWith('**')) parts.push(<b key={k++} style={{ color: 'var(--fg)' }}>{m[0].slice(2, -2)}</b>);
+    else parts.push(<code key={k++} style={{ fontFamily: 'var(--font-mono)', fontSize: 11.5, background: 'var(--bg4)', borderRadius: 3, padding: '0 3px' }}>{m[0].slice(1, -1)}</code>);
+    last = m.index + m[0].length;
+  }
+  if (last < src.length) parts.push(src.slice(last));
+  return parts;
 }
 
 /* ---------- 关闭弹窗 ---------- */

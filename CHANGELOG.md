@@ -4,6 +4,20 @@ All notable changes to this project are documented in this file.
 The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and this project
 adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.0.7] — 2026-11-17
+
+### Added
+- **In-app update** — the update dialog now has a **下载并安装** button: it downloads the matching installer
+  (Setup, or Portable for portable builds) with a progress bar, launches it (silent `/S` for Setup) and
+  restarts the app, instead of only opening the release page.
+
+### Changed
+- Release notes are rendered as formatted text (headings, bullets, bold, inline code); the downloads table
+  is hidden because the installer is handled in-app.
+
+### Fixed
+- Overview "file size" now shows the real size on disk instead of **0 B**.
+
 ## [1.0.6] — 2026-11-17
 
 ### Changed
@@ -120,6 +134,7 @@ adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 - No audio in dual-channel playback for captures without SDP (direction slot collision).
 - Layout imbalance on very wide displays and lack of stacking on narrow windows.
 
+[1.0.7]: https://github.com/Super-Gouba/m-ryuga/releases/tag/v1.0.7
 [1.0.6]: https://github.com/Super-Gouba/m-ryuga/releases/tag/v1.0.6
 [1.0.5]: https://github.com/Super-Gouba/m-ryuga/releases/tag/v1.0.5
 [1.0.4]: https://github.com/Super-Gouba/m-ryuga/releases/tag/v1.0.4

@@ -555,6 +555,10 @@ select.input { cursor: pointer; }
 .metric.accent { border-color: var(--accent-line); background: var(--accent-soft); }
 .metric.accent .m-value { color: var(--accent-dark); }
 
+/* 更新下载进度 */
+.upd-prog { height: 6px; border-radius: 999px; background: var(--bg4); overflow: hidden; }
+.upd-prog > i { display: block; height: 100%; background: var(--accent); transition: width .2s; }
+
 /* DTMF 标记 */
 .dtmf-pill {
   display: inline-flex; align-items: center; gap: 5px;

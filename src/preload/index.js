@@ -32,6 +32,8 @@ contextBridge.exposeInMainWorld('mryuga', {
   updateSetStartup: (on) => ipcRenderer.invoke('update:setStartup', on),
   updateClearPending: () => ipcRenderer.invoke('update:clearPending'),
   updateOpenRelease: (url) => ipcRenderer.invoke('update:openRelease', url),
+  updateDownload: (assets) => ipcRenderer.invoke('update:download', assets),
+  updateInstall: (file) => ipcRenderer.invoke('update:install', file),
   updateGetSettings: () => ipcRenderer.invoke('update:getSettings'),
   // 设置
   settingsGet: () => ipcRenderer.invoke('settings:get'),
@@ -56,7 +58,7 @@ contextBridge.exposeInMainWorld('mryuga', {
   paths: () => ipcRenderer.invoke('app:paths'),
   // 事件
   on: (channel, fn) => {
-    const allowed = ['task:started', 'task:progress', 'task:done', 'task:error', 'app:close-request', 'app:open-files', 'update:available', 'live:stats', 'live:snapshot', 'live:log', 'live:stopped'];
+    const allowed = ['task:started', 'task:progress', 'task:done', 'task:error', 'app:close-request', 'app:open-files', 'update:available', 'update:progress', 'live:stats', 'live:snapshot', 'live:log', 'live:stopped'];
     if (allowed.includes(channel)) {
       const listener = (_e, payload) => fn(payload);
       ipcRenderer.on(channel, listener);

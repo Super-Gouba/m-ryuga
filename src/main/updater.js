@@ -53,11 +53,12 @@ class Updater {
         isNewer: isNewer && latest !== this.ignoredVer,
         notes: rel.body_markdown || rel.body || '',
         url: rel.html_url || `https://github.com/${REPO}/releases/latest`,
-        publishedAt: rel.published_at
+        publishedAt: rel.published_at,
+        assets: (rel.assets || []).map(a => ({ name: a.name, size: a.size, url: a.browser_download_url }))
       };
       if (isNewer && !manual) {
         // 非手动且新版 → 记录 pendingRelease 用于稍后提醒
-        this.settings.pendingRelease = { latest, notes: result.notes, url: result.url };
+        this.settings.pendingRelease = { latest, notes: result.notes, url: result.url, assets: result.assets };
         if (latest !== this.ignoredVer) this.notify(result, false);
         else this.settings.pendingRelease = null;
         this.saveSettings();
@@ -76,6 +77,29 @@ class Updater {
   setIgnored(ver) { this.settings.ignoredVersion = ver; this.settings.pendingRelease = null; this.saveSettings(); }
   setStartupCheck(on) { this.settings.startupCheck = !!on; if (!on) this.settings.pendingRelease = null; this.saveSettings(); }
   clearPending() { this.settings.pendingRelease = null; this.saveSettings(); }
+
+  /** 下载安装包到临时目录，onProgress({got,total,pct}) */
+  async download(assets, onProgress) {
+    const portable = !!process.env.PORTABLE_EXECUTABLE_DIR;
+    const exes = (assets || []).filter(a => /\.exe$/i.test(a.name || ''));
+    const asset = exes.find(a => (portable ? /Portable/i.test(a.name) : /Setup/i.test(a.name))) || exes[0];
+    if (!asset?.url) throw new Error('该版本没有可下载的安装包');
+    const dir = path.join(this.app.getPath('temp'), 'mryuga-update');
+    fs.mkdirSync(dir, { recursive: true });
+    const file = path.join(dir, path.basename(asset.name));
+    await downloadFile(asset.url, file, onProgress);
+    return { file, name: asset.name, size: asset.size, portable };
+  }
+
+  /** 启动安装器并退出应用（NSIS 安装版使用 /S 静默升级） */
+  install(file) {
+    const { spawn } = require('child_process');
+    const silent = /Setup/i.test(path.basename(file));
+    const child = spawn(file, silent ? ['/S'] : [], { detached: true, stdio: 'ignore' });
+    child.unref();
+    setTimeout(() => this.app.quit(), 600);
+    return true;
+  }
 }
 
 function fetchLatestRelease(repo) {
@@ -96,6 +120,34 @@ function fetchLatestRelease(repo) {
     req.on('timeout', () => { req.destroy(new Error('查询超时')); });
     req.on('error', reject);
     req.end();
+  });
+}
+
+/** 流式下载，跟随 GitHub → objects.githubusercontent.com 跳转 */
+function downloadFile(url, dest, onProgress) {
+  return new Promise((resolve, reject) => {
+    const req = https.get(url, { headers: { 'User-Agent': 'M-Ryuga-Updater' }, timeout: 30000 }, (res) => {
+      if (res.statusCode >= 300 && res.statusCode < 400 && res.headers.location) {
+        res.resume();
+        const next = res.headers.location.startsWith('http') ? res.headers.location : `https://github.com${res.headers.location}`;
+        downloadFile(next, dest, onProgress).then(resolve, reject);
+        return;
+      }
+      if (res.statusCode !== 200) { res.resume(); reject(new Error(`下载失败（HTTP ${res.statusCode}）`)); return; }
+      const total = Number(res.headers['content-length'] || 0);
+      let got = 0;
+      const out = fs.createWriteStream(dest);
+      res.on('data', (c) => {
+        got += c.length;
+        onProgress?.({ got, total, pct: total ? got / total : 0 });
+      });
+      res.on('error', reject);
+      out.on('error', reject);
+      out.on('finish', () => out.close(() => resolve(dest)));
+      res.pipe(out);
+    });
+    req.on('timeout', () => req.destroy(new Error('下载超时')));
+    req.on('error', reject);
   });
 }
 

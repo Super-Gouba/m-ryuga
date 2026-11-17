@@ -189,6 +189,19 @@ function registerIpc(app, win) {
   ipcMain.handle('update:setStartup', (_e, on) => { globalThis.__mryugaUpdater?.setStartupCheck(on); return true; });
   ipcMain.handle('update:clearPending', () => { globalThis.__mryugaUpdater?.clearPending(); return true; });
   ipcMain.handle('update:openRelease', (_e, url) => { shell.openExternal(url || 'https://github.com/m-ryuga/m-ryuga/releases/latest'); return true; });
+  ipcMain.handle('update:download', async (e, assets) => {
+    const u = globalThis.__mryugaUpdater;
+    if (!u) return { ok: false, error: '更新组件未初始化' };
+    try {
+      const r = await u.download(assets, p => { if (!e.sender.isDestroyed()) e.sender.send('update:progress', p); });
+      return { ok: true, ...r };
+    } catch (err) { return { ok: false, error: String(err.message || err) }; }
+  });
+  ipcMain.handle('update:install', (_e, file) => {
+    const u = globalThis.__mryugaUpdater;
+    if (!u || !file) return { ok: false, error: '安装包路径无效' };
+    try { u.install(file); return { ok: true }; } catch (err) { return { ok: false, error: String(err.message || err) }; }
+  });
   ipcMain.handle('update:getSettings', () => {
     const u = globalThis.__mryugaUpdater;
     return u ? { startupCheck: u.enabled, ignoredVersion: u.ignoredVer, lastCheck: u.lastCheck, pending: !!u.settings.pendingRelease } : null;
