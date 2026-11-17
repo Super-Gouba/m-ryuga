@@ -32,6 +32,8 @@ contextBridge.exposeInMainWorld('mryuga', {
   updateSetStartup: (on) => ipcRenderer.invoke('update:setStartup', on),
   updateClearPending: () => ipcRenderer.invoke('update:clearPending'),
   updateOpenRelease: (url) => ipcRenderer.invoke('update:openRelease', url),
+  updatesList: () => ipcRenderer.invoke('updates:list'),
+  audioSaveWav: (opts) => ipcRenderer.invoke('audio:saveWav', opts),
   updateDownload: (assets) => ipcRenderer.invoke('update:download', assets),
   updateInstall: (file) => ipcRenderer.invoke('update:install', file),
   updateGetSettings: () => ipcRenderer.invoke('update:getSettings'),

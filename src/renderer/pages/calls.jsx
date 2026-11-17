@@ -1113,10 +1113,11 @@ function AudioTab({ sel, soloKey, call }) {
       </div>
     );
   }
-  return <div className="detail-scroll"><AudioAnalysis media={media} soloKey={soloKey} call={call} /></div>;
+  return <div className="detail-scroll"><AudioAnalysis media={media} soloKey={soloKey} call={call} sel={sel} /></div>;
 }
 
-function AudioAnalysis({ media, soloKey, call }) {
+function AudioAnalysis({ media, soloKey, call, sel }) {
+  const { showToast } = useStore();
   const A = media.streams?.a, B = media.streams?.b;
   const initSolo = soloKey ? (A?.key === soloKey ? 'a' : B?.key === soloKey ? 'b' : null) : null;
   const [solo, setSolo] = useState(initSolo);
@@ -1126,7 +1127,25 @@ function AudioAnalysis({ media, soloKey, call }) {
   const [rate, setRate] = useState(1);
   const [cur, setCur] = useState(0);
   const [playing, setPlaying] = useState(false);
+  const [dlWhich, setDlWhich] = useState('mix');
+  const [dlBusy, setDlBusy] = useState(false);
   const nodesRef = useRef(null);
+
+  // 直接导出 WAV：主进程重新解码并弹保存对话框，支持合并 / 单方向
+  const downloadAudio = async () => {
+    if (!sel?.fileId) return;
+    setDlBusy(true);
+    try {
+      const r = await api.audioSaveWav({ fileId: sel.fileId, callId: sel.callId, which: dlWhich });
+      if (r?.canceled) return;
+      if (r?.ok) showToast('ok', t('audio.dlSaved', { path: r.file }));
+      else showToast('err', r?.error || t('audio.dlFail'));
+    } catch (e) {
+      showToast('err', String(e.message || e));
+    } finally {
+      setDlBusy(false);
+    }
+  };
 
   const tracks = [['a', A], ['b', B]].filter(([, st]) => st);
   const colors = { a: '#2563eb', b: '#7c3aed' };
@@ -1312,6 +1331,12 @@ function AudioAnalysis({ media, soloKey, call }) {
         <select className="input" value={rate} onChange={e => setRate(+e.target.value)} style={{ width: 78 }}>
           {[0.5, 0.75, 1, 1.25, 1.5, 2].map(r => <option key={r} value={r}>{r}×</option>)}
         </select>
+        <select className="input" value={dlWhich} onChange={e => setDlWhich(e.target.value)} style={{ width: 132 }} title={t('audio.download')}>
+          <option value="mix">{t('audio.dlMix')}</option>
+          {A?.pcm && <option value="a">{t('audio.dlCaller')}</option>}
+          {B?.pcm && <option value="b">{t('audio.dlCallee')}</option>}
+        </select>
+        <button className="btn" onClick={downloadAudio} disabled={dlBusy}>{dlBusy ? t('audio.downloading') : `⤓ ${t('audio.download')}`}</button>
         <span className="mono" style={{ fontSize: 11.5, color: 'var(--fg3)' }}>{cur.toFixed(3)} / {totalSec.toFixed(3)} s</span>
       </div>
     </div>

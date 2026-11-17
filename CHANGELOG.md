@@ -4,6 +4,19 @@ All notable changes to this project are documented in this file.
 The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and this project
 adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.0.11] — 2026-11-17
+
+### Added
+- **Download audio** — the Audio analysis transport bar now has a download button with a target selector
+  (mixed A+B / caller A / callee B). The main process re-decodes the chosen stream and opens a save
+  dialog, defaulting to `Downloads\M-Ryuga-<call>-<target>.wav`.
+- **Version history** — Settings → About → Software update has a **Changelog** button that lists every
+  GitHub release; selecting a version renders its notes in the current interface language.
+
+### Changed
+- Update notes are no longer bilingual in one pane: release bodies are split on the `---` separator and
+  only the section matching the current language (Chinese or English) is rendered.
+
 ## [1.0.10] — 2026-11-17
 
 ### Added
@@ -181,6 +194,7 @@ adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 - No audio in dual-channel playback for captures without SDP (direction slot collision).
 - Layout imbalance on very wide displays and lack of stacking on narrow windows.
 
+[1.0.11]: https://github.com/Super-Gouba/m-ryuga/releases/tag/v1.0.11
 [1.0.10]: https://github.com/Super-Gouba/m-ryuga/releases/tag/v1.0.10
 [1.0.9]: https://github.com/Super-Gouba/m-ryuga/releases/tag/v1.0.9
 [1.0.8]: https://github.com/Super-Gouba/m-ryuga/releases/tag/v1.0.8

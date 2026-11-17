@@ -59,6 +59,9 @@ const dict = {
     'audio.legend': 'Legend', 'audio.amp': 'Amplitude', 'audio.lossMark': 'Loss / gap', 'audio.silence': 'Silence', 'audio.playhead': 'Playhead', 'audio.dtmfMark': 'DTMF key',
     'audio.streamInfo': 'Stream', 'audio.noMediaDesc': 'This file has no RTP media. Audio analysis needs RTP packets — text SIP logs carry signaling only.',
     'audio.decoding': 'Decoding media…', 'audio.unsupported': 'recognized, decoding not supported yet',
+    'audio.download': 'Download audio', 'audio.downloading': 'Saving…', 'audio.dlMix': 'Mixed (A+B)',
+    'audio.dlCaller': 'Caller (A)', 'audio.dlCallee': 'Callee (B)', 'audio.dlSaved': 'Saved to {path}',
+    'audio.dlFail': 'Audio export failed',
     'export.title': 'Export', 'export.items': 'What to export', 'export.pcapng': 'Associated packets (PCAPNG: SIP + RTP)',
     'export.wav': 'Per-direction WAV (caller / callee / mixed)', 'export.report': 'HTML analysis report (single file)',
     'export.privacy': 'Privacy masking', 'export.maskUser': 'Mask numbers (keep last 4 digits)', 'export.maskIp': 'Mask IPs (keep first 2 octets)',
@@ -95,7 +98,10 @@ const dict = {
     'asr.open': 'Open model folder', 'asr.recommended': 'Recommended models', 'asr.detected': 'Detected models',
     'asr.run': 'Start transcription', 'asr.running': 'Transcribing…', 'asr.result': 'Result', 'asr.select': 'Select a call',
     'asr.merge': 'Merge', 'asr.split': 'Per direction', 'asr.needSetup': 'Offline engine or model not ready',
-    'set.language': 'Language', 'set.languageDesc': 'Applies immediately; default is Simplified Chinese'
+    'set.language': 'Language', 'set.languageDesc': 'Applies immediately; default is Simplified Chinese',
+    'set.changelog': 'Changelog', 'set.changelogTitle': 'Version history', 'set.changelogLoading': 'Loading releases…',
+    'set.changelogFail': 'Could not load releases (check your network)', 'set.changelogEmpty': 'No releases found',
+    'set.changelogRetry': 'Retry', 'set.changelogCurrent': 'Installed', 'set.releaseNotesEmpty': 'No release notes'
   },
   zh: {
     'brand.sub': 'SIP / RTP 抓包分析',
@@ -152,6 +158,9 @@ const dict = {
     'audio.legend': '图例', 'audio.amp': '振幅', 'audio.lossMark': '丢包 / 断流', 'audio.silence': '静音', 'audio.playhead': '播放位置', 'audio.dtmfMark': 'DTMF 按键',
     'audio.streamInfo': '流信息', 'audio.noMediaDesc': '该文件不含 RTP 媒体，无法进行音频分析（文本信令日志只包含信令）。',
     'audio.decoding': '解码媒体中…（大文件较慢）', 'audio.unsupported': '已识别，暂不支持解码',
+    'audio.download': '下载音频', 'audio.downloading': '保存中…', 'audio.dlMix': '合并音频（A+B）',
+    'audio.dlCaller': '主叫音频（A）', 'audio.dlCallee': '被叫音频（B）', 'audio.dlSaved': '已保存：{path}',
+    'audio.dlFail': '音频导出失败',
     'export.title': '导出', 'export.items': '导出内容', 'export.pcapng': '原始关联报文（PCAPNG，本通话 SIP + RTP）',
     'export.wav': '分方向 WAV（主叫 / 被叫 / 混合）', 'export.report': 'HTML 分析报告（自包含单文件）',
     'export.privacy': '隐私遮蔽', 'export.maskUser': '遮蔽号码（保留后 4 位）', 'export.maskIp': '遮蔽 IP（保留前 2 段）',
@@ -188,7 +197,10 @@ const dict = {
     'asr.open': '打开模型目录', 'asr.recommended': '推荐模型', 'asr.detected': '已检测到的模型',
     'asr.run': '开始转写', 'asr.running': '识别中…', 'asr.result': '识别结果', 'asr.select': '选择通话',
     'asr.merge': '合并识别', 'asr.split': '按方向分轨', 'asr.needSetup': '离线识别环境未就绪',
-    'set.language': '语言', 'set.languageDesc': '立即生效，默认简体中文'
+    'set.language': '语言', 'set.languageDesc': '立即生效，默认简体中文',
+    'set.changelog': '更新日志', 'set.changelogTitle': '版本更新日志', 'set.changelogLoading': '正在获取版本列表…',
+    'set.changelogFail': '无法获取版本列表（请检查网络）', 'set.changelogEmpty': '暂无发布记录',
+    'set.changelogRetry': '重试', 'set.changelogCurrent': '当前版本', 'set.releaseNotesEmpty': '（发布说明为空）'
   }
 };
 

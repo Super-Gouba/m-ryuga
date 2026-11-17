@@ -189,6 +189,11 @@ function registerIpc(app, win) {
   ipcMain.handle('update:setStartup', (_e, on) => { globalThis.__mryugaUpdater?.setStartupCheck(on); return true; });
   ipcMain.handle('update:clearPending', () => { globalThis.__mryugaUpdater?.clearPending(); return true; });
   ipcMain.handle('update:openRelease', (_e, url) => { shell.openExternal(url || 'https://github.com/m-ryuga/m-ryuga/releases/latest'); return true; });
+  ipcMain.handle('updates:list', async () => {
+    const u = globalThis.__mryugaUpdater;
+    if (!u) return { ok: false, error: '更新组件未初始化' };
+    return u.listReleases();
+  });
   ipcMain.handle('update:download', async (e, assets) => {
     const u = globalThis.__mryugaUpdater;
     if (!u) return { ok: false, error: '更新组件未初始化' };
@@ -550,6 +555,30 @@ function registerIpc(app, win) {
       return { ok: false, code: 'run', error: String(e.message || e) };
     } finally {
       for (const t of temps) { try { fs.unlinkSync(t); } catch { /* 忽略 */ } }
+    }
+  });
+
+  /* ---------- 音频导出（音频分析页直接下载 WAV） ---------- */
+  ipcMain.handle('audio:saveWav', async (_e, { fileId, callId, which }) => {
+    const s = sessions.get(fileId);
+    if (!s) return { ok: false, error: '会话不存在，请重新导入文件' };
+    try {
+      const { encodeWav } = require('../core/media/assembler');
+      const media = await analyzeMedia(s, callId);
+      const st = which === 'a' || which === 'b' ? media.streams[which] : mixStreams(media.streams.a, media.streams.b);
+      if (!st?.pcm) return { ok: false, error: '该方向没有可导出的音频' };
+      const label = which === 'a' ? 'caller' : which === 'b' ? 'callee' : 'mix';
+      const base = String(callId).slice(0, 16).replace(/[^a-zA-Z0-9_-]/g, '_');
+      const r = await dialog.showSaveDialog(win, {
+        title: '保存音频',
+        defaultPath: path.join(app.getPath('downloads'), `M-Ryuga-${base}-${label}.wav`),
+        filters: [{ name: 'WAV 音频', extensions: ['wav'] }]
+      });
+      if (r.canceled || !r.filePath) return { ok: false, canceled: true };
+      fs.writeFileSync(r.filePath, encodeWav(st.pcm, st.sampleRate));
+      return { ok: true, file: r.filePath };
+    } catch (err) {
+      return { ok: false, error: String(err.message || err) };
     }
   });
 

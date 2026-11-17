@@ -37,6 +37,7 @@ function SettingsPage() {
   const [ver, setVer] = useState('');
   const [checking, setChecking] = useState(false);
   const [asr, setAsr] = useState(null);
+  const [changelog, setChangelog] = useState(false);
 
   const loadUpd = () => api.updateGetSettings?.().then(setUpd).catch(() => {});
   useEffect(() => {
@@ -215,6 +216,7 @@ function SettingsPage() {
                   </div>
                   <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
                     <span className="badge mut">v{ver || '—'}</span>
+                    <button className="btn sm" onClick={() => setChangelog(true)}>{t('set.changelog')}</button>
                     <button className="btn primary" onClick={manualCheck} disabled={checking}>{checking ? t('set.checking') : t('set.check')}</button>
                   </div>
                 </div>
@@ -249,6 +251,7 @@ function SettingsPage() {
           )}
         </div>
       </div>
+      {changelog && <ChangelogModal current={ver} onClose={() => setChangelog(false)} />}
     </div>
   );
 }
@@ -316,7 +319,7 @@ function UpdateModal({ info, onClose }) {
 
 /* 发布说明：轻量 Markdown 渲染（标题 / 列表 / 粗体 / 行内代码），自动隐藏 Downloads 段 */
 function ReleaseNotes({ body }) {
-  const lines = String(body || '').split(/\r?\n/);
+  const lines = String(localizeNotes(body) || '').split(/\r?\n/);
   const out = [];
   let i = 0;
   while (i < lines.length) {
@@ -357,7 +360,17 @@ function ReleaseNotes({ body }) {
     }
     out.push(<div key={`p${i}`} style={{ lineHeight: 1.75 }}>{inlineFmt(line)}</div>);
   }
-  return <div style={{ fontSize: 12.5, color: 'var(--fg2)' }}>{out.length ? out : '（发布说明为空）'}</div>;
+  return <div style={{ fontSize: 12.5, color: 'var(--fg2)' }}>{out.length ? out : t('set.releaseNotesEmpty')}</div>;
+}
+
+/* 发布说明常以分隔线拆成「英文 → 中文」两段；只保留当前界面语言那一段 */
+function localizeNotes(body) {
+  const src = String(body || '');
+  const parts = src.split(/\n\s*---\s*\n/).map(s => s.trim()).filter(Boolean);
+  if (parts.length < 2) return src;
+  const score = s => (s.match(/[\u4e00-\u9fff]/g) || []).length;
+  const sorted = [...parts].sort((a, b) => score(a) - score(b));
+  return getLang() === 'zh' ? sorted[sorted.length - 1] : sorted[0];
 }
 
 function inlineFmt(text) {
@@ -373,6 +386,89 @@ function inlineFmt(text) {
   }
   if (last < src.length) parts.push(src.slice(last));
   return parts;
+}
+
+/* ---------- 更新日志：左侧版本列表 + 右侧本地化说明 ---------- */
+function ChangelogModal({ current, onClose }) {
+  const [items, setItems] = useState(null);
+  const [err, setErr] = useState('');
+  const [sel, setSel] = useState(null);
+  const [loading, setLoading] = useState(true);
+
+  const load = () => {
+    setLoading(true); setErr('');
+    api.updatesList?.()
+      .then(r => {
+        if (r?.ok && r.items?.length) {
+          setItems(r.items);
+          setSel(s => s || r.items[0].tag);
+        } else if (r?.ok) setItems([]);
+        else setErr(r?.error || t('set.changelogFail'));
+      })
+      .catch(e => setErr(String(e.message || e)))
+      .finally(() => setLoading(false));
+  };
+  useEffect(load, []);
+
+  const cur = items?.find(x => x.tag === sel);
+  const isCurrent = tag => String(tag || '').replace(/^v/i, '') === String(current || '');
+
+  return (
+    <Overlay>
+      <div className="card" style={{ width: 860, maxWidth: '94vw', height: '76vh', padding: 0, display: 'flex', flexDirection: 'column', overflow: 'hidden' }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '14px 20px', borderBottom: '1px solid var(--line)' }}>
+          <span style={{ fontSize: 16, fontWeight: 700, color: 'var(--fg)' }}>{t('set.changelogTitle')}</span>
+          <div style={{ flex: 1 }} />
+          <button className="linkbtn" onClick={() => api.updateOpenRelease(`${REPO_URL}/releases`)}>GitHub ↗</button>
+          <button className="btn sm ghost" onClick={onClose}>✕</button>
+        </div>
+
+        <div style={{ display: 'flex', flex: 1, minHeight: 0 }}>
+          <aside style={{ width: 196, flexShrink: 0, borderRight: '1px solid var(--line)', overflow: 'auto', padding: '6px 0' }}>
+            {loading && <div style={{ padding: '14px 16px', fontSize: 12, color: 'var(--fg3)' }}>{t('set.changelogLoading')}</div>}
+            {(items || []).map(it => (
+              <div key={it.tag} onClick={() => setSel(it.tag)}
+                style={{
+                  padding: '8px 14px', cursor: 'pointer',
+                  borderLeft: sel === it.tag ? '2px solid var(--accent)' : '2px solid transparent',
+                  background: sel === it.tag ? 'var(--bg3)' : 'transparent'
+                }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+                  <span className="mono" style={{ fontSize: 12.5, fontWeight: 600, color: 'var(--fg)' }}>{it.tag}</span>
+                  {isCurrent(it.tag) && <span className="badge ok" style={{ fontSize: 10 }}>{t('set.changelogCurrent')}</span>}
+                </div>
+                <div style={{ fontSize: 11, color: 'var(--fg3)' }}>{String(it.at || '').slice(0, 10)}</div>
+              </div>
+            ))}
+          </aside>
+
+          <div style={{ flex: 1, minWidth: 0, overflow: 'auto', padding: '14px 18px' }}>
+            {err && (
+              <div className="empty" style={{ padding: 28 }}>
+                <div style={{ fontSize: 12.5, color: 'var(--fg2)' }}>{err}</div>
+                <button className="btn sm" style={{ marginTop: 10 }} onClick={load}>{t('set.changelogRetry')}</button>
+              </div>
+            )}
+            {!err && !loading && !items?.length && (
+              <div className="empty" style={{ padding: 28 }}>{t('set.changelogEmpty')}</div>
+            )}
+            {cur && (
+              <>
+                <div style={{ display: 'flex', alignItems: 'baseline', gap: 8, marginBottom: 8 }}>
+                  <span style={{ fontSize: 15, fontWeight: 700, color: 'var(--fg)' }}>{cur.tag}</span>
+                  <span style={{ fontSize: 11.5, color: 'var(--fg3)' }}>{String(cur.at || '').slice(0, 10)}</span>
+                  {cur.pre && <span className="badge mut">pre-release</span>}
+                  <div style={{ flex: 1 }} />
+                  <button className="linkbtn" onClick={() => api.updateOpenRelease(cur.url)}>{t('set.open')} ↗</button>
+                </div>
+                <ReleaseNotes body={cur.notes} />
+              </>
+            )}
+          </div>
+        </div>
+      </div>
+    </Overlay>
+  );
 }
 
 /* ---------- 关闭弹窗 ---------- */

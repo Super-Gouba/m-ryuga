@@ -74,6 +74,20 @@ class Updater {
     this.win.webContents.send('update:available', { ...result, fromPending });
   }
 
+  /** 历史发布列表（用于应用内更新日志） */
+  async listReleases() {
+    try {
+      const list = await fetchJson(`/repos/${REPO}/releases?per_page=30`);
+      return {
+        ok: true,
+        items: (Array.isArray(list) ? list : []).map(r => ({
+          tag: r.tag_name, name: r.name || r.tag_name, at: r.published_at,
+          notes: r.body || '', url: r.html_url, pre: !!r.prerelease
+        }))
+      };
+    } catch (e) { return { ok: false, error: String(e.message || e) }; }
+  }
+
   setIgnored(ver) { this.settings.ignoredVersion = ver; this.settings.pendingRelease = null; this.saveSettings(); }
   setStartupCheck(on) { this.settings.startupCheck = !!on; if (!on) this.settings.pendingRelease = null; this.saveSettings(); }
   clearPending() { this.settings.pendingRelease = null; this.saveSettings(); }
@@ -120,6 +134,27 @@ class Updater {
       setTimeout(() => done({ ok: false, error: '安装超时，请手动运行下载的安装包' }), 120000);
     });
   }
+}
+
+function fetchJson(apiPath) {
+  return new Promise((resolve, reject) => {
+    const req = https.request({
+      host: 'api.github.com',
+      path: apiPath,
+      headers: { 'User-Agent': 'M-Ryuga-Updater', 'Accept': 'application/vnd.github+json' },
+      timeout: 12000
+    }, (res) => {
+      let data = '';
+      res.on('data', (c) => data += c);
+      res.on('end', () => {
+        if (res.statusCode !== 200) { reject(new Error(`GitHub API ${res.statusCode}`)); return; }
+        try { resolve(JSON.parse(data)); } catch (e) { reject(e); }
+      });
+    });
+    req.on('timeout', () => req.destroy(new Error('查询超时')));
+    req.on('error', reject);
+    req.end();
+  });
 }
 
 function fetchLatestRelease(repo) {
