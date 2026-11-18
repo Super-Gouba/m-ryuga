@@ -1,7 +1,7 @@
 {
   "name": "m-ryuga",
   "productName": "M-Ryuga",
-  "version": "1.0.13",
+  "version": "1.0.14",
   "description": "Local-first VoIP capture workstation for SIP / RTP forensics and call-quality diagnostics",
   "main": "src/main/main.js",
   "author": "M-Ryuga contributors",

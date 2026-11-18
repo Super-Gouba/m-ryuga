@@ -68,8 +68,10 @@ function registerIpc(app, win) {
       result.fileName = path.basename(filePath);
       sessions.set(fileId, result);
       finishTask(id, 'done');
-      send('task:done', { id, result: { fileId, calls: result.calls, stats: result.stats, truncated: result.truncated, fileName: result.fileName, format: result.format } });
-      return { ok: true, fileId, taskId: id, calls: result.calls, stats: result.stats, truncated: result.truncated, fileName: result.fileName, format: result.format };
+      // 结果只经 invoke 返回值交付；事件里再带一份会让 4500 通通话的数组被结构化克隆两次
+      send('task:done', { id });
+      // 列表只需要摘要；diag 由 call:diagnose 在打开通话时按需获取，避免上千通时传输数 MB
+      return { ok: true, fileId, taskId: id, calls: result.calls.map(c => ({ id: c.id, callId: c.callId, summary: c.summary })), stats: result.stats, truncated: result.truncated, fileName: result.fileName, format: result.format };
     } catch (e) {
       finishTask(id, 'error');
       send('task:error', { id, error: String(e.message || e) });

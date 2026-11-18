@@ -4,6 +4,23 @@ All notable changes to this project are documented in this file.
 The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and this project
 adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.0.14] — 2026-11-18
+
+### Fixed
+- **Large-capture freeze** — an 18 MB capture with 4,500 calls used to mount every call row at once.
+  The call list is now windowed (visible rows plus an 8-row overscan), keeping the DOM at ~15 rows
+  regardless of capture size; scrolling still covers the full list.
+
+### Changed
+- **Transcript merged into Audio analysis** — the separate 转写 tab is gone. Transcription mode, start /
+  restart, progress and searchable results now sit below the audio player in the same tab, so playback and
+  transcription are controlled in one place. Running jobs still survive tab and page switches.
+- **Message table no longer wraps** — the time, signaling and source→destination columns stay on one line;
+  when the pane is narrow the table scrolls horizontally instead of squeezing text.
+- **Lighter import payload** — per-call diagnostics are no longer sent for every call during import
+  (fetched on demand when a call is opened), and the full result is no longer duplicated through the
+  `task:done` event.
+
 ## [1.0.13] — 2026-11-18
 
 ### Fixed
@@ -224,6 +241,7 @@ adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 - No audio in dual-channel playback for captures without SDP (direction slot collision).
 - Layout imbalance on very wide displays and lack of stacking on narrow windows.
 
+[1.0.14]: https://github.com/Super-Gouba/m-ryuga/releases/tag/v1.0.14
 [1.0.13]: https://github.com/Super-Gouba/m-ryuga/releases/tag/v1.0.13
 [1.0.12]: https://github.com/Super-Gouba/m-ryuga/releases/tag/v1.0.12
 [1.0.11]: https://github.com/Super-Gouba/m-ryuga/releases/tag/v1.0.11

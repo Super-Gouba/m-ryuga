@@ -14,6 +14,32 @@ function CallsPage() {
   const wrapRef = useRef(null);
   const [listW, listDrag, listCss] = usePaneSize(wrapRef, { key: 'mryuga:listW', initial: 300, min: 230, maxRatio: 0.36, side: 'left', reserve: 560, maxPx: 460 });
 
+  // 大包（上千通通话）只渲染可视区，避免一次性挂载全部行导致卡顿
+  const ROW_H = 76;
+  const listBodyRef = useRef(null);
+  const [scrollTop, setScrollTop] = useState(0);
+  const [viewH, setViewH] = useState(420);
+  const rafRef = useRef(0);
+  useEffect(() => {
+    const el = listBodyRef.current;
+    if (!el) return undefined;
+    const ro = new ResizeObserver(() => setViewH(el.clientHeight));
+    ro.observe(el);
+    setViewH(el.clientHeight);
+    return () => ro.disconnect();
+  }, []);
+  useEffect(() => {
+    const el = listBodyRef.current;
+    if (el) el.scrollTop = 0;
+    setScrollTop(0);
+  }, [q, onlyIssue, activeFile]);
+  useEffect(() => () => { if (rafRef.current) cancelAnimationFrame(rafRef.current); }, []);
+  const onListScroll = (e) => {
+    const top = e.currentTarget.scrollTop;
+    if (rafRef.current) cancelAnimationFrame(rafRef.current);
+    rafRef.current = requestAnimationFrame(() => { rafRef.current = 0; setScrollTop(top); });
+  };
+
   const list = useMemo(() => calls.filter(c => {
     const s = c.summary || {};
     if (activeFile && c.fileId !== activeFile) return false;
@@ -39,6 +65,10 @@ function CallsPage() {
   }
 
   const issueCount = list.filter(c => c.summary?.sev !== 'ok').length;
+  // 只渲染可视区 ±8 行，4500 通通话时 DOM 行数保持在 30 行左右
+  const start = Math.max(0, Math.floor(scrollTop / ROW_H) - 8);
+  const end = Math.min(list.length, Math.ceil((scrollTop + viewH) / ROW_H) + 8);
+  const visible = list.slice(start, end);
 
   return (
     <div className="calls" ref={wrapRef}>
@@ -57,32 +87,37 @@ function CallsPage() {
         <div className="list-count">
           {t('list.matched')} {list.length} · {t('list.abnormal')} {issueCount}
         </div>
-        <div className="list-body">
-          {list.map(c => {
-            const s = c.summary || {};
-            const sel = selCall?.callId === c.callId && selCall?.fileId === c.fileId;
-            const ended = s.endStatus || (s.ended ? 'BYE' : null);
-            return (
-              <div key={c.id} className="call-row" data-sel={sel || undefined} data-sev={s.sev || 'ok'}
-                onClick={() => dispatch({ type: 'select', sel: { fileId: c.fileId, callId: c.callId } })}>
-                <div className="call-route">
-                  <span className="who">{s.fromUser || '未知'}</span>
-                  <span className="arrow">→</span>
-                  <span className="who">{s.toUser || '未知'}</span>
-                </div>
-                <div className="call-meta">
-                  <span className="mono">{fmtTimeDay(s.tStart)}</span>
-                  <span className="m-sep mono">{s.connDurationSec != null ? fmtDur(s.connDurationSec) : t('list.durationUnknown')}</span>
-                  <span className="m-sep">{ended || t('list.notEnded')}</span>
-                </div>
-                <div className="call-badges">
-                  {(s.codecs || []).slice(0, 2).map(cd => <span key={cd} className="badge mut">{cd}</span>)}
-                  {s.sev && s.sev !== 'ok' && <SevBadge sev={s.sev} />}
-                </div>
-              </div>
-            );
-          })}
-          {list.length === 0 && <div className="empty">{t('list.empty')}</div>}
+        <div className="list-body" ref={listBodyRef} onScroll={onListScroll}>
+          {list.length === 0 ? <div className="empty">{t('list.empty')}</div> : (
+            <div style={{ position: 'relative', height: list.length * ROW_H }}>
+              {visible.map((c, i) => {
+                const idx = start + i;
+                const s = c.summary || {};
+                const sel = selCall?.callId === c.callId && selCall?.fileId === c.fileId;
+                const ended = s.endStatus || (s.ended ? 'BYE' : null);
+                return (
+                  <div key={c.id} className="call-row" data-sel={sel || undefined} data-sev={s.sev || 'ok'}
+                    style={{ position: 'absolute', top: idx * ROW_H, left: 0, right: 0, height: ROW_H }}
+                    onClick={() => dispatch({ type: 'select', sel: { fileId: c.fileId, callId: c.callId } })}>
+                    <div className="call-route">
+                      <span className="who">{s.fromUser || '未知'}</span>
+                      <span className="arrow">→</span>
+                      <span className="who">{s.toUser || '未知'}</span>
+                    </div>
+                    <div className="call-meta">
+                      <span className="mono">{fmtTimeDay(s.tStart)}</span>
+                      <span className="m-sep mono">{s.connDurationSec != null ? fmtDur(s.connDurationSec) : t('list.durationUnknown')}</span>
+                      <span className="m-sep">{ended || t('list.notEnded')}</span>
+                    </div>
+                    <div className="call-badges">
+                      {(s.codecs || []).slice(0, 2).map(cd => <span key={cd} className="badge mut">{cd}</span>)}
+                      {s.sev && s.sev !== 'ok' && <SevBadge sev={s.sev} />}
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+          )}
         </div>
       </aside>
 
@@ -120,7 +155,6 @@ function CallDetail({ sel }) {
     ['ladder', t('tab.ladder'), (msgs?.msgs?.length || 0) + dtmfCount],
     ['msgs', t('tab.messages'), (msgs?.msgs?.length || 0) + dtmfCount],
     ['audio', t('tab.audio'), null],
-    ['transcript', t('tab.transcript'), null],
     ['export', t('tab.export'), null]
   ];
   const splitTab = tab === 'ladder' || tab === 'msgs';
@@ -176,7 +210,6 @@ function CallDetail({ sel }) {
             : <Loading />)}
           {tab === 'msgs' && (msgs ? <MsgsTab data={msgs} rows={rows} pick={pick} onPick={setPick} /> : <Loading />)}
           {tab === 'audio' && <AudioTab sel={sel} soloKey={audioSoloKey} call={call} />}
-          {tab === 'transcript' && <TranscriptTab sel={sel} call={call} />}
           {tab === 'export' && <ExportTab sel={sel} />}
         </div>
         {splitTab && msgs && !narrow && (
@@ -1004,9 +1037,9 @@ function MsgsTab({ data, rows, pick, onPick }) {
           onChange={e => setQ(e.target.value)} style={{ width: 'min(260px, 100%)' }} />
         <span style={{ fontSize: 11.5, color: 'var(--fg3)' }}>{list.length} 条</span>
       </div>
-      <div className="list-body">
-        <table className="tbl">
-          <thead><tr><th style={{ width: 42 }}>#</th><th style={{ width: 118 }}>时间</th><th>信令 / 事件</th><th>源 → 目的</th></tr></thead>
+      <div className="list-body tbl-scroll">
+        <table className="tbl msgs-table">
+          <thead><tr><th style={{ width: 42 }}>#</th><th style={{ width: 168 }}>时间</th><th>信令 / 事件</th><th>源 → 目的</th></tr></thead>
           <tbody>
             {list.map(({ r, no }) => {
               const sel = pick?.type === r.type && pick?.idx === r.idx;
@@ -1054,7 +1087,16 @@ function CheckTab({ call, sel }) {
   }, [sel]);
 
   const s = call.summary || {};
-  const diag = call.diag || {};
+  // 导入时不再为每通通话传输 diag，打开时按需拉取
+  const [diag, setDiag] = useState(call.diag || {});
+  useEffect(() => {
+    if (call.diag) { setDiag(call.diag); return undefined; }
+    let alive = true;
+    api.callDiagnose(sel.fileId, sel.callId)
+      .then(r => { if (alive && r?.ok && r.diag) setDiag(r.diag); })
+      .catch(() => {});
+    return () => { alive = false; };
+  }, [sel, call]);
   const issues = [
     ...(diag.signalingIssues || []).map(i => ({ ...i, cat: '信令' })),
     ...(diag.mediaIssues || []).map(i => ({ ...i, cat: '媒体' }))
@@ -1175,9 +1217,9 @@ function MiniWave({ waveform, color }) {
 }
 
 /* ============================================================
-   转写：在通话详情内发起，任务状态保存在模块级（切页不丢）
+   转写：与音频分析合并展示，任务状态保存在模块级（切页不丢）
    ============================================================ */
-function TranscriptTab({ sel }) {
+function TranscriptPanel({ sel }) {
   const jobs = useAsrJobs();
   const key = `${sel.fileId}|${sel.callId}`;
   const job = jobs.get(key);
@@ -1199,8 +1241,8 @@ function TranscriptTab({ sel }) {
   };
 
   return (
-    <div className="detail-scroll">
-      <div className="audio-shell">
+    <div className="audio-shell" style={{ marginTop: 12 }}>
+      <React.Fragment>
         <div className="card">
           <div className="card-title" style={{ flexWrap: 'wrap', gap: 8 }}>
             语音转写
@@ -1260,7 +1302,7 @@ function TranscriptTab({ sel }) {
             </div>
           </div>
         )}
-      </div>
+      </React.Fragment>
     </div>
   );
 }
@@ -1296,7 +1338,12 @@ function AudioTab({ sel, soloKey, call }) {
       </div>
     );
   }
-  return <div className="detail-scroll"><AudioAnalysis media={media} soloKey={soloKey} call={call} sel={sel} /></div>;
+  return (
+    <div className="detail-scroll">
+      <AudioAnalysis media={media} soloKey={soloKey} call={call} sel={sel} />
+      <TranscriptPanel sel={sel} />
+    </div>
+  );
 }
 
 function AudioAnalysis({ media, soloKey, call, sel }) {
