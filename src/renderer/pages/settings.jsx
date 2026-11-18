@@ -476,7 +476,8 @@ function CloseModal({ onClose }) {
   const [remember, setRemember] = useState(false);
   const [choice, setChoice] = useState('tray');
   const cancel = async () => { await api.cancelClose(); onClose(); };
-  const confirm = () => api.resolveClose(choice, remember);
+  // 确认后必须清掉渲染层的 closeReq，否则从托盘恢复窗口时弹窗仍然停留在界面上
+  const confirm = async () => { await api.resolveClose(choice, remember); onClose(); };
 
   return (
     <Overlay>

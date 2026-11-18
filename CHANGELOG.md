@@ -4,6 +4,25 @@ All notable changes to this project are documented in this file.
 The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and this project
 adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.0.13] — 2026-11-18
+
+### Fixed
+- **Close dialog persisted after tray restore** — confirming "keep running in the tray" now clears the dialog
+  state before the window hides, so the app returns to its normal page when reopened from the tray.
+
+### Changed
+- **SIP-aware ladder annotations** — mid-call INVITEs are now recognised as **re-INVITE / session update**
+  (To-tag or existing dialog), a 2xx to a re-INVITE reads "session update accepted", and its ACK reads
+  "session update confirmed". SDP `sendonly` / `recvonly` / `inactive` offers are labelled as hold, and
+  `sendrecv` after a hold as resume.
+- **Retransmission labels** — identical requests / responses within 64×T1 (32 s) are marked as
+  retransmissions instead of repeating the original explanation.
+- **More precise response reasons** — 401/407 authentication, 403/603 rejected, 404 not found, 408 timeout,
+  480 unavailable, 486 busy, 487 cancelled, 488/606 media negotiation failure, 503 unavailable; PRACK,
+  UPDATE, INFO, OPTIONS, MESSAGE and SUBSCRIBE/NOTIFY are also annotated.
+- The call-flow strip now includes re-INVITE steps and detects the release time from the BYE response when
+  the BYE request itself was not captured.
+
 ## [1.0.12] — 2026-11-17
 
 ### Added
@@ -205,6 +224,7 @@ adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 - No audio in dual-channel playback for captures without SDP (direction slot collision).
 - Layout imbalance on very wide displays and lack of stacking on narrow windows.
 
+[1.0.13]: https://github.com/Super-Gouba/m-ryuga/releases/tag/v1.0.13
 [1.0.12]: https://github.com/Super-Gouba/m-ryuga/releases/tag/v1.0.12
 [1.0.11]: https://github.com/Super-Gouba/m-ryuga/releases/tag/v1.0.11
 [1.0.10]: https://github.com/Super-Gouba/m-ryuga/releases/tag/v1.0.10

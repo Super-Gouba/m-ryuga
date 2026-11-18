@@ -352,58 +352,151 @@ function LadderFlow({ msgs }) {
 }
 
 function buildFlow(msgs) {
-  const list = (msgs || []).filter(Boolean).slice().sort((a, b) => a.tsUs - b.tsUs);
+  const list = (msgs || []).filter(Boolean);
   if (!list.length) return [];
-  const t0 = list[0].tsUs;
+  const sorted = list.slice().sort((a, b) => a.tsUs - b.tsUs);
+  const t0 = sorted[0].tsUs;
   const at = us => `+${Math.max(0, (us - t0) / 1e6).toFixed(2)} s`;
-  const first = fn => list.find(fn);
   const methodOf = m => String(m.cseqMethod || m.method || '').toUpperCase();
-  const invite = first(m => m.kind === 'request' && methodOf(m) === 'INVITE');
-  const early = first(m => m.kind === 'response' && (m.status === 180 || m.status === 183));
-  const answer = first(m => m.kind === 'response' && m.status >= 200 && m.status < 300 && methodOf(m) === 'INVITE');
-  const fail = first(m => m.kind === 'response' && m.status >= 400 && methodOf(m) === 'INVITE');
-  const bye = first(m => m.kind === 'request' && methodOf(m) === 'BYE');
-  const cancel = first(m => m.kind === 'request' && methodOf(m) === 'CANCEL');
+  const req = (m, name) => m.kind === 'request' && methodOf(m) === name;
+  const res = (m, lo, hi) => m.kind === 'response' && m.status >= lo && m.status <= hi;
+
+  const firstInvite = sorted.find(m => req(m, 'INVITE'));
+  const early = sorted.find(m => res(m, 180, 183));
+  const answer = sorted.find(m => res(m, 200, 299) && methodOf(m) === 'INVITE');
+  const fail = sorted.find(m => res(m, 400, 699) && methodOf(m) === 'INVITE');
+  const bye = sorted.find(m => req(m, 'BYE'));
+  const byeOk = sorted.find(m => m.kind === 'response' && methodOf(m) === 'BYE' && m.status >= 200 && m.status < 300);
+  const cancel = sorted.find(m => req(m, 'CANCEL'));
+  const release = bye || cancel || byeOk;
+  // 已建立通话后的 INVITE 都是 re-INVITE（会话更新）；排除首个 INVITE 的重传
+  const updates = sorted.filter(m => req(m, 'INVITE') && m !== firstInvite && (!!m.toTag || (!!answer && m.tsUs >= answer.tsUs)));
 
   const steps = [];
-  if (invite) steps.push({ tone: 'req', text: t('ladder.stepInvite'), at: at(invite.tsUs) });
+  if (firstInvite) steps.push({ tone: 'req', text: t('ladder.stepInvite'), at: at(firstInvite.tsUs) });
   if (early) steps.push({ tone: 'warn', text: early.status === 183 ? t('ladder.stepEarly') : t('ladder.stepRinging'), at: at(early.tsUs) });
   if (answer) steps.push({ tone: 'ok', text: t('ladder.stepAnswer'), at: at(answer.tsUs) });
-  if (answer && bye) steps.push({ tone: 'info', text: t('ladder.stepTalk'), at: `${((bye.tsUs - answer.tsUs) / 1e6).toFixed(2)} s` });
-  if (fail && !answer) steps.push({ tone: 'err', text: `${t('ladder.stepFail')} ${fail.status}`, at: at(fail.tsUs) });
-  if (bye) steps.push({ tone: 'bye', text: t('ladder.stepBye'), at: at(bye.tsUs) });
+  const relEnd = release;
+  for (const m of updates) {
+    if (relEnd && m.tsUs >= relEnd.tsUs) continue;
+    steps.push({ tone: 'info', text: t('ladder.stepUpdate'), at: at(m.tsUs) });
+  }
+  if (!answer && fail) steps.push({ tone: 'err', text: `${t('ladder.stepFail')} ${fail.status}`, at: at(fail.tsUs) });
+  if (answer && relEnd) steps.push({ tone: 'info', text: t('ladder.stepTalk'), at: `${((relEnd.tsUs - answer.tsUs) / 1e6).toFixed(2)} s` });
+  if (bye || byeOk) steps.push({ tone: 'bye', text: t('ladder.stepBye'), at: at((bye || byeOk).tsUs) });
   else if (cancel) steps.push({ tone: 'warn', text: t('ladder.stepCancel'), at: at(cancel.tsUs) });
   return steps;
 }
 
-/* 逐条消息的白话注释 */
-function annoOf(m) {
-  if (!m) return null;
-  const method = String(m.cseqMethod || m.method || '').toUpperCase();
-  if (m.kind === 'request') {
-    if (method === 'INVITE') return { tone: 'req', text: msgLabel(m).includes('/ SDP') ? t('ladder.annoInviteSdp') : t('ladder.annoInvite') };
-    if (method === 'ACK') return { tone: 'ok', text: t('ladder.annoAck') };
-    if (method === 'BYE') return { tone: 'bye', text: t('ladder.annoBye') };
-    if (method === 'CANCEL') return { tone: 'warn', text: t('ladder.annoCancel') };
-    if (method === 'PRACK') return { tone: 'info', text: t('ladder.annoPrack') };
-    if (method === 'UPDATE') return { tone: 'info', text: t('ladder.annoUpdate') };
-    if (method === 'REFER') return { tone: 'info', text: t('ladder.annoRefer') };
-    if (method === 'REGISTER') return { tone: 'info', text: t('ladder.annoRegister') };
-    return { tone: 'info', text: method };
-  }
-  const s = Number(m.status) || 0;
-  if (s === 100) return { tone: 'info', text: t('ladder.annoTrying') };
-  if (s === 180) return { tone: 'warn', text: t('ladder.annoRinging') };
-  if (s === 183) return { tone: 'warn', text: t('ladder.annoEarly') };
-  if (s >= 200 && s < 300) {
-    if (method === 'INVITE') return { tone: 'ok', text: t('ladder.annoAnswer') };
-    if (method === 'BYE') return { tone: 'bye', text: t('ladder.annoByeOk') };
-    return { tone: 'ok', text: s === 200 ? t('ladder.annoOk') : String(s) };
-  }
-  if (s === 487) return { tone: 'warn', text: t('ladder.annoCanceled') };
-  if (s >= 400 && s < 500) return { tone: 'err', text: t('ladder.annoFail') };
-  if (s >= 500) return { tone: 'err', text: t('ladder.annoServerFail') };
+/* SDP 方向属性：用于识别通话保持 / 恢复 */
+function sdpDirection(m) {
+  const body = String(m?.body || '');
+  if (/^a=inactive\s*$/mi.test(body)) return 'inactive';
+  if (/^a=sendonly\s*$/mi.test(body)) return 'sendonly';
+  if (/^a=recvonly\s*$/mi.test(body)) return 'recvonly';
+  if (/^a=sendrecv\s*$/mi.test(body)) return 'sendrecv';
   return null;
+}
+
+/* 逐条消息的白话注释：结合对话状态识别 re-INVITE / Hold / 重传 / 失败原因 */
+function buildAnnos(msgs) {
+  const out = new Map();
+  const dialogs = new Map();
+  const methodOf = m => String(m.cseqMethod || m.method || '').toUpperCase();
+
+  for (const m of (msgs || [])) {
+    if (!m) continue;
+    const cid = m.callId || '';
+    let d = dialogs.get(cid);
+    if (!d) {
+      d = { inviteSeen: false, answered: false, failed: false, held: false, reInvites: new Set(), requests: new Map(), responses: new Map() };
+      dialogs.set(cid, d);
+    }
+    const method = methodOf(m);
+
+    // 重传：同方向、同 CSeq、同方法/状态码，且在 64×T1（32 s）内重复出现
+    const key = m.kind === 'request'
+      ? `q|${method}|${m.cseq}|${m.src}|${m.dst}`
+      : `s|${m.status}|${method}|${m.cseq}|${m.src}|${m.dst}`;
+    const store = m.kind === 'request' ? d.requests : d.responses;
+    const prev = store.get(key);
+    store.set(key, m.tsUs);
+    if (prev != null && m.tsUs - prev <= 32e6) {
+      out.set(m, { tone: 'muted', text: m.kind === 'request' ? t('ladder.annoRetransReq') : t('ladder.annoRetransRes') });
+      continue;
+    }
+
+    if (m.kind === 'request') {
+      if (method === 'INVITE') {
+        // To-tag 已出现或本 Call-ID 已发过 INVITE → 在已建立的对话内，属于 re-INVITE
+        const inDialog = d.inviteSeen || !!m.toTag;
+        const dir = sdpDirection(m);
+        if (inDialog) {
+          d.reInvites.add(m.cseq);
+          if (dir === 'inactive') out.set(m, { tone: 'warn', text: t('ladder.annoHoldBoth') });
+          else if (dir === 'sendonly' || dir === 'recvonly') out.set(m, { tone: 'warn', text: t('ladder.annoHold') });
+          else if (dir === 'sendrecv' && d.held) out.set(m, { tone: 'ok', text: t('ladder.annoUnhold') });
+          else out.set(m, { tone: 'info', text: dir ? t('ladder.annoReInviteSdp') : t('ladder.annoReInvite') });
+          if (dir) d.held = dir !== 'sendrecv';
+        } else {
+          d.inviteSeen = true;
+          out.set(m, { tone: 'req', text: msgLabel(m).includes('/ SDP') ? t('ladder.annoInviteSdp') : t('ladder.annoInvite') });
+        }
+      } else if (method === 'ACK') {
+        if (d.reInvites.has(m.cseq)) out.set(m, { tone: 'ok', text: t('ladder.annoAckUpdate') });
+        else if (d.answered) out.set(m, { tone: 'ok', text: t('ladder.annoAck') });
+        else if (d.failed) out.set(m, { tone: 'info', text: t('ladder.annoAckFail') });
+        else out.set(m, { tone: 'info', text: t('ladder.annoAckResponse') });
+      } else if (method === 'BYE') out.set(m, { tone: 'bye', text: t('ladder.annoBye') });
+      else if (method === 'CANCEL') out.set(m, { tone: 'warn', text: t('ladder.annoCancel') });
+      else if (method === 'PRACK') out.set(m, { tone: 'info', text: t('ladder.annoPrack') });
+      else if (method === 'UPDATE') out.set(m, { tone: 'info', text: t('ladder.annoUpdateReq') });
+      else if (method === 'REFER') out.set(m, { tone: 'info', text: t('ladder.annoRefer') });
+      else if (method === 'REGISTER') out.set(m, { tone: 'info', text: t('ladder.annoRegister') });
+      else if (method === 'INFO') out.set(m, { tone: 'info', text: t('ladder.annoInfo') });
+      else if (method === 'OPTIONS') out.set(m, { tone: 'info', text: t('ladder.annoOptions') });
+      else if (method === 'MESSAGE') out.set(m, { tone: 'info', text: t('ladder.annoMessage') });
+      else if (method === 'SUBSCRIBE' || method === 'NOTIFY') out.set(m, { tone: 'info', text: t('ladder.annoSubscribe') });
+      else out.set(m, { tone: 'info', text: method });
+      continue;
+    }
+
+    const s = Number(m.status) || 0;
+    if (method === 'INVITE' && s >= 300) d.failed = true;
+
+    if (s >= 200 && s < 300) {
+      if (method === 'INVITE') {
+        const re = d.reInvites.has(m.cseq);
+        d.answered = true;
+        out.set(m, { tone: 'ok', text: re ? t('ladder.annoUpdateOk') : t('ladder.annoAnswer') });
+      } else if (method === 'BYE') out.set(m, { tone: 'bye', text: t('ladder.annoByeOk') });
+      else if (method === 'CANCEL') out.set(m, { tone: 'warn', text: t('ladder.annoCancelOk') });
+      else if (method === 'PRACK') out.set(m, { tone: 'ok', text: t('ladder.annoPrackOk') });
+      else if (method === 'UPDATE') out.set(m, { tone: 'ok', text: t('ladder.annoUpdateOk') });
+      else out.set(m, { tone: 'ok', text: s === 200 ? t('ladder.annoOk') : String(s) });
+      continue;
+    }
+    if (s >= 300 && s < 400) { out.set(m, { tone: 'warn', text: t('ladder.annoRedirect') }); continue; }
+    if (s === 401 || s === 407) { out.set(m, { tone: 'warn', text: t('ladder.annoAuth') }); continue; }
+    if (s === 403 || s === 603) { out.set(m, { tone: 'err', text: t('ladder.annoForbidden') }); continue; }
+    if (s === 404) { out.set(m, { tone: 'err', text: t('ladder.annoNotFound') }); continue; }
+    if (s === 408) { out.set(m, { tone: 'err', text: t('ladder.annoTimeout') }); continue; }
+    if (s === 480) { out.set(m, { tone: 'warn', text: t('ladder.annoUnavailable') }); continue; }
+    if (s === 486) { out.set(m, { tone: 'warn', text: t('ladder.annoBusy') }); continue; }
+    if (s === 487) { out.set(m, { tone: 'warn', text: t('ladder.annoCanceled') }); continue; }
+    if (s === 488 || s === 606) { out.set(m, { tone: 'err', text: t('ladder.annoMediaFail') }); continue; }
+    if (s === 503) { out.set(m, { tone: 'err', text: t('ladder.annoServiceUnavailable') }); continue; }
+    if (s >= 400 && s < 500) { out.set(m, { tone: 'err', text: t('ladder.annoFail') }); continue; }
+    if (s >= 500) { out.set(m, { tone: 'err', text: t('ladder.annoServerFail') }); continue; }
+    if (s === 100) {
+      out.set(m, { tone: 'info', text: d.reInvites.has(m.cseq) ? t('ladder.annoUpdateTrying') : t('ladder.annoTrying') });
+      continue;
+    }
+    if (s === 180) { out.set(m, { tone: 'warn', text: t('ladder.annoRinging') }); continue; }
+    if (s === 183) { out.set(m, { tone: 'warn', text: t('ladder.annoEarly') }); continue; }
+    if (s >= 100 && s < 200) { out.set(m, { tone: 'info', text: t('ladder.annoProgress') }); continue; }
+  }
+  return out;
 }
 
 /* 消息短标签：INVITE / SDP、200 OK / SDP … */
@@ -418,6 +511,8 @@ function LadderDiagram({ data, rows, pick, onPick }) {
   const { actors, lanes } = data;
   const hostRef = useRef(null);
   const [cw, setCw] = useState(0);
+  // 注释需要跨消息状态（对话是否已建立、是否重传），先整体算一遍
+  const annos = useMemo(() => buildAnnos(data.msgs), [data.msgs]);
   useEffect(() => {
     const el = hostRef.current;
     if (!el) return undefined;
@@ -456,7 +551,7 @@ function LadderDiagram({ data, rows, pick, onPick }) {
   }[cls] || 'var(--fg2)');
   const annoTone = {
     req: 'var(--accent)', ok: 'var(--green)', warn: 'var(--amber)',
-    err: 'var(--red)', bye: 'var(--violet)', info: 'var(--fg3)'
+    err: 'var(--red)', bye: 'var(--violet)', info: 'var(--fg3)', muted: 'var(--fg3)'
   };
 
   return (
@@ -537,7 +632,7 @@ function LadderDiagram({ data, rows, pick, onPick }) {
 
           const l = lanes[r.idx];
           const m = data.msgs[r.idx];
-          const anno = annoOf(m);
+          const anno = annos.get(m);
           const x1 = actorX(l.from), x2 = actorX(l.to);
           const c = color(l.cls);
           const dir = x2 >= x1 ? 1 : -1;
