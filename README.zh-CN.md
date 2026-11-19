@@ -35,13 +35,13 @@
 
 ## 截图
 
-以下截图均使用合成演示抓包：文档专用 IP 段（`192.0.2.0/24`、`198.51.100.0/24`）、虚构分机 `1001–1099` 与 `lab.example.com` 域名，不包含任何真实用户数据。界面为英文状态，分辨率 1920×1080。
+以下截图均使用合成演示抓包：文档专用 IP 段（`192.0.2.0/24`、`198.51.100.0/24`）、虚构分机 `1001–1099` 与 `lab.example.com` 域名，不包含任何真实用户数据。界面为英文状态，分辨率 1920×1200。
 
 | 流序图 | 报文明细 |
 | --- | --- |
 | [![含 re-INVITE / 保持注释与 DTMF 的流序图](docs/screenshots/01-call-ladder.png)](docs/screenshots/01-call-ladder.png) | [![带语法高亮的报文明细](docs/screenshots/02-signaling-messages.png)](docs/screenshots/02-signaling-messages.png) |
 | **音频分析** | **通话概览** |
-| [![双向波形与 DTMF 标记的音频分析](docs/screenshots/03-audio-analysis.png)](docs/screenshots/03-audio-analysis.png) | [![抓包信息、协议分布与媒体统计的通话概览](docs/screenshots/04-call-overview.png)](docs/screenshots/04-call-overview.png) |
+| [![双向波形与 DTMF 标记的音频分析](docs/screenshots/03-audio-analysis.png)](docs/screenshots/03-audio-analysis.png) | [![协议分布、时间线、媒体统计与诊断结论的通话概览](docs/screenshots/04-call-overview.png)](docs/screenshots/04-call-overview.png) |
 
 ## 安装
 

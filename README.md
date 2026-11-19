@@ -36,13 +36,13 @@ Everything runs on your machine. No accounts, no telemetry, no cloud processing.
 
 ## Screenshots
 
-All captures use a synthetic demo capture — documentation IP ranges (`192.0.2.0/24`, `198.51.100.0/24`), fictional extensions `1001–1099` and `lab.example.com` domains. No real subscriber data is shown. English UI at 1920×1080.
+All captures use a synthetic demo capture — documentation IP ranges (`192.0.2.0/24`, `198.51.100.0/24`), fictional extensions `1001–1099` and `lab.example.com` domains. No real subscriber data is shown. English UI at 1920×1200.
 
 | Call flow ladder | Signaling messages |
 | --- | --- |
 | [![Call flow ladder with re-INVITE / hold annotations and DTMF](docs/screenshots/01-call-ladder.png)](docs/screenshots/01-call-ladder.png) | [![Signaling messages with syntax-highlighted raw view](docs/screenshots/02-signaling-messages.png)](docs/screenshots/02-signaling-messages.png) |
 | **Audio analysis** | **Call overview** |
-| [![Per-direction audio analysis with waveforms and DTMF markers](docs/screenshots/03-audio-analysis.png)](docs/screenshots/03-audio-analysis.png) | [![Call overview with capture, protocol mix and media statistics](docs/screenshots/04-call-overview.png)](docs/screenshots/04-call-overview.png) |
+| [![Per-direction audio analysis with waveforms and DTMF markers](docs/screenshots/03-audio-analysis.png)](docs/screenshots/03-audio-analysis.png) | [![Call overview with protocol mix, timeline, media statistics and diagnosis](docs/screenshots/04-call-overview.png)](docs/screenshots/04-call-overview.png) |
 
 ## Install
 
