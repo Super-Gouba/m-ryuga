@@ -24,7 +24,6 @@ fs.mkdirSync(path.join(userData, 'exports'), { recursive: true });
 let win = null;
 let tray = null;
 let quitConfirmed = false;
-let closeAction = 'ask'; // ask | tray | exit（用户记忆的选择）
 let psBlockerId = null;
 
 // ---- 单实例 ----
@@ -51,6 +50,10 @@ const saveUiState = (patch) => {
   try { fs.writeFileSync(uiStateFile, JSON.stringify({ ...readUiState(), ...patch }, null, 2)); } catch { /* 忽略 */ }
 };
 let zoomFactor = Math.min(1.6, Math.max(0.7, Number(readUiState().zoom) || 1));
+
+// 关闭行为记忆：写入 ui-state.json，重启后仍生效（ask | tray | exit）
+const savedClose = readUiState().closeAction;
+let closeAction = savedClose === 'tray' || savedClose === 'exit' ? savedClose : 'ask';
 
 function applyZoom(delta) {
   if (delta === 0) zoomFactor = 1;
@@ -144,13 +147,20 @@ function doQuit() {
 function setupTrayIpc() {
   ipcMain.handle('app:resolve-close', (_e, action, remember) => {
     // action: 'tray' | 'exit'
-    if (remember) closeAction = action;
+    if (remember) { closeAction = action; saveUiState({ closeAction: action }); }
     if (action === 'tray') { if (win) win.hide(); }
     else doQuit();
     return true;
   });
   ipcMain.handle('app:cancel-close', () => { return true; });
   ipcMain.handle('app:get-close-action', () => closeAction);
+  // 设置页可随时改回询问（避免「退出 + 记住」后再也看不到弹窗）
+  ipcMain.handle('app:set-close-action', (_e, action) => {
+    if (action !== 'ask' && action !== 'tray' && action !== 'exit') return closeAction;
+    closeAction = action;
+    saveUiState({ closeAction: action });
+    return closeAction;
+  });
 }
 
 // ---- 启动检查更新（要求⑨，实现见 updater.js） ----

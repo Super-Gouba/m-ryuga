@@ -11,6 +11,7 @@ const GROUPS = [
     titleKey: 'set.group.general',
     items: [
       { id: 'language', icon: '文', key: 'set.language' },
+      { id: 'behavior', icon: '◐', key: 'set.behavior' },
       { id: 'storage', icon: '▤', key: 'set.storage' }
     ]
   },
@@ -38,6 +39,7 @@ function SettingsPage() {
   const [checking, setChecking] = useState(false);
   const [asr, setAsr] = useState(null);
   const [changelog, setChangelog] = useState(false);
+  const [closeAct, setCloseAct] = useState('ask');
 
   const loadUpd = () => api.updateGetSettings?.().then(setUpd).catch(() => {});
   useEffect(() => {
@@ -45,7 +47,13 @@ function SettingsPage() {
     api.paths().then(setPaths).catch(() => {});
     api.version().then(setVer).catch(() => {});
     api.asrStatus?.().then(setAsr).catch(() => {});
+    api.getCloseAction?.().then(setCloseAct).catch(() => {});
   }, []);
+
+  const pickCloseAct = async v => {
+    const r = await api.setCloseAction?.(v);
+    if (r) { setCloseAct(r); showToast('ok', t('set.behaviorSaved')); }
+  };
 
   const manualCheck = async () => {
     setChecking(true);
@@ -92,6 +100,24 @@ function SettingsPage() {
                   <div style={{ display: 'flex', gap: 6 }}>
                     <button className={`btn sm ${getLang() === 'en' ? 'primary' : ''}`} onClick={() => { setLang('en'); dispatch({ type: 'toast', toast: { kind: 'ok', text: 'Language: English' } }); }}>English</button>
                     <button className={`btn sm ${getLang() === 'zh' ? 'primary' : ''}`} onClick={() => { setLang('zh'); dispatch({ type: 'toast', toast: { kind: 'ok', text: '界面语言：简体中文' } }); }}>简体中文</button>
+                  </div>
+                </div>
+              </section>
+            </>
+          )}
+          {pane === 'behavior' && (
+            <>
+              <div className="settings-title">{t('set.behavior')}</div>
+              <section className="section">
+                <div className="set-row">
+                  <div>
+                    <div className="set-label">{t('set.behavior')}</div>
+                    <div className="set-desc">{t('set.behaviorDesc')}</div>
+                  </div>
+                  <div style={{ display: 'flex', gap: 6 }}>
+                    {[['ask', 'close.ask'], ['tray', 'close.tray'], ['exit', 'close.exit']].map(([v, k]) => (
+                      <button key={v} className={`btn sm ${closeAct === v ? 'primary' : ''}`} onClick={() => pickCloseAct(v)}>{t(k)}</button>
+                    ))}
                   </div>
                 </div>
               </section>

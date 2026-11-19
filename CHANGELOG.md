@@ -4,6 +4,16 @@ All notable changes to this project are documented in this file.
 The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and this project
 adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.0.15] — 2026-11-19
+
+### Fixed
+- **"Quit" choice was not remembered** — the remembered close action lived only in main-process memory,
+  so choosing "Quit M-Ryuga" + "Remember my choice" still prompted on the next launch, while
+  "Keep running in the tray" appeared to work. The choice is now written to `ui-state.json` and
+  restored at startup.
+- Closing behavior can be changed again from **Settings → Closing behavior** (Ask every time / Tray /
+  Quit), so a remembered choice no longer becomes irreversible.
+
 ## [1.0.14] — 2026-11-18
 
 ### Fixed

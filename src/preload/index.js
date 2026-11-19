@@ -58,6 +58,8 @@ contextBridge.exposeInMainWorld('mryuga', {
   takeOpenFiles: () => ipcRenderer.invoke('app:take-open-files'),
   resolveClose: (action, remember) => ipcRenderer.invoke('app:resolve-close', action, remember),
   cancelClose: () => ipcRenderer.invoke('app:cancel-close'),
+  getCloseAction: () => ipcRenderer.invoke('app:get-close-action'),
+  setCloseAction: (action) => ipcRenderer.invoke('app:set-close-action', action),
   version: () => ipcRenderer.invoke('app:version'),
   paths: () => ipcRenderer.invoke('app:paths'),
   // 事件
