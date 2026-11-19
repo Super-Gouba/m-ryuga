@@ -590,7 +590,7 @@ function LadderDiagram({ data, rows, pick, onPick }) {
   return (
     <div ref={hostRef} style={{ width: '100%', minHeight: H }}>
       <svg width={W} height={H} style={{ display: 'block' }}>
-        <text x={offX + 12} y={26} fontSize={10.5} fill="var(--fg3)" fontFamily="var(--font-mono)">相对时间 / 秒</text>
+        <text x={offX + 12} y={26} fontSize={10.5} fill="var(--fg3)" fontFamily="var(--font-mono)">{t('ladder.timeAxis')}</text>
         <line x1={offX + GUTTER - 14} y1={4} x2={offX + GUTTER - 14} y2={H - 4} stroke="var(--line)" />
 
         {actors.map((a, i) => {
@@ -631,7 +631,7 @@ function LadderDiagram({ data, rows, pick, onPick }) {
                 <line x1={x1} y1={y} x2={x2} y2={y} stroke="var(--amber)" strokeWidth={1.4} strokeDasharray="5 4" opacity={.75} />
                 <rect x={mid - 52} y={y - 10} width={104} height={20} rx={10} fill="var(--warn-bg)" stroke="#ecd9b6" />
                 <text x={mid} y={y + 4} textAnchor="middle" fontSize={11} fontWeight="700" fill="var(--amber)"
-                  fontFamily="var(--font-mono)">按键 {d.digit}</text>
+                  fontFamily="var(--font-mono)">{t('ladder.dtmfKey', { d: d.digit })}</text>
                 <title>{`DTMF 按键 ${d.digit} · ${d.via} · ${fmtDateTime(r.tsUs)}`}</title>
               </g>
             );
@@ -721,10 +721,10 @@ function idxOfActor(actors, addr, fallback) {
 function MsgPane({ item }) {
   const { showToast } = useStore();
   const [open, setOpen] = useState(false);
-  if (!item) return <div className="msg-pane"><div className="empty" style={{ flex: 1 }}>选择一条信令</div></div>;
+  if (!item) return <div className="msg-pane"><div className="empty" style={{ flex: 1 }}>{t('msg.pickMsg')}</div></div>;
 
   const expandBtn = (
-    <button className="btn sm ghost" title="放大查看" onClick={() => setOpen(true)} style={{ marginLeft: 'auto' }}>⤢ 放大</button>
+    <button className="btn sm ghost" title={t('msg.zoomTitle')} onClick={() => setOpen(true)} style={{ marginLeft: 'auto' }}>⤢ {t('msg.zoom')}</button>
   );
   const modal = open ? <MessageModal item={item} onClose={() => setOpen(false)} /> : null;
 
@@ -735,19 +735,17 @@ function MsgPane({ item }) {
       <div className="msg-pane">
         <div className="msg-pane-head">
           <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-            <div className="mp-title" style={{ color: 'var(--amber)' }}>DTMF 按键 {d.digit}</div>
+            <div className="mp-title" style={{ color: 'var(--amber)' }}>{t('msg.dtmfTitle')} {d.digit}</div>
             {expandBtn}
           </div>
-          <div className="mp-row">时间：<b>{fmtDateTime(d.startUs)}</b></div>
-          <div className="mp-row">通道：<b>{d.via}</b></div>
-          {d.durationMs != null && <div className="mp-row">时长：<b>{Math.round(d.durationMs)} ms</b></div>}
-          {d.src && <div className="mp-row">源：<b>{d.src}</b>　目的：<b>{d.dst}</b></div>}
+          <div className="mp-row">{t('msg.time')}: <b>{fmtDateTime(d.startUs)}</b></div>
+          <div className="mp-row">{t('msg.channel')}: <b>{d.via}</b></div>
+          {d.durationMs != null && <div className="mp-row">{t('msg.duration')}: <b>{Math.round(d.durationMs)} ms</b></div>}
+          {d.src && <div className="mp-row">{t('msg.source')}: <b>{d.src}</b>　{t('msg.dest')}: <b>{d.dst}</b></div>}
         </div>
         <div className="msg-pane-body">
           <div style={{ fontSize: 12.5, color: 'var(--fg2)', lineHeight: 1.9 }}>
-            该按键来自媒体侧 DTMF 事件（非 SIP 信令），因此在报文列表中只出现一行摘要。
-            <br />· RFC2833/4733：RTP 电话事件包，独立 PT（通常 101）
-            <br />· SIP INFO：随 INFO 报文下发，正文含 Signal / Duration
+            {t('mm.dtmfNote')}
           </div>
         </div>
       </div>
@@ -764,22 +762,22 @@ function MsgPane({ item }) {
       <div className="msg-pane">
         <div className="msg-pane-head">
           <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-            <div className="mp-title" style={{ color: 'var(--orange)' }}>RTP 媒体流 · {md.codec}</div>
+            <div className="mp-title" style={{ color: 'var(--orange)' }}>{t('msg.rtpTitle')} · {md.codec}</div>
             {expandBtn}
           </div>
-          <div className="mp-row">源：<b>{md.src}</b>　目的：<b>{md.dst}</b></div>
+          <div className="mp-row">{t('msg.source')}: <b>{md.src}</b>　{t('msg.dest')}: <b>{md.dst}</b></div>
           <div className="mp-row">
-            包数：<b>{md.packets}</b>
-            {dur != null && <> · 跨度：<b>{dur.toFixed(1)}s</b></>}
-            {md.lost > 0 && <> · 丢失：<b style={{ color: 'var(--amber)' }}>{md.lost}</b></>}
+            {t('msg.packets')}: <b>{md.packets}</b>
+            {dur != null && <> · {t('msg.rtpSpan')}: <b>{dur.toFixed(1)}s</b></>}
+            {md.lost > 0 && <> · {t('msg.lost')}: <b style={{ color: 'var(--amber)' }}>{md.lost}</b></>}
           </div>
           <div className="mp-actions">
-            <span style={{ fontSize: 11.5, color: 'var(--fg3)' }}>点击该行即可自动切到「双向试听」并独听此方向</span>
+            <span style={{ fontSize: 11.5, color: 'var(--fg3)' }}>{t('msg.rtpHint')}</span>
           </div>
         </div>
         <div className="msg-pane-body">
           <div style={{ fontSize: 12.5, color: 'var(--fg2)', lineHeight: 1.9 }}>
-            该行代表一条 RTP 媒体流（不是 SIP 信令）。在「双向试听」中可分别播放主叫 / 被叫方向。
+            {t('mm.rtpNote')}
           </div>
         </div>
       </div>
@@ -789,10 +787,10 @@ function MsgPane({ item }) {
   }
 
   const msg = item.msg;
-  if (!msg) return <div className="msg-pane"><div className="empty" style={{ flex: 1 }}>无报文</div></div>;
+  if (!msg) return <div className="msg-pane"><div className="empty" style={{ flex: 1 }}>{t('msg.noMsg')}</div></div>;
   const copy = async () => {
-    try { await navigator.clipboard.writeText(rawText(msg)); showToast('ok', '已复制原文'); }
-    catch { showToast('err', '复制失败'); }
+    try { await navigator.clipboard.writeText(rawText(msg)); showToast('ok', t('msg.copied')); }
+    catch { showToast('err', t('msg.copyFail')); }
   };
   return (
     <>
@@ -802,10 +800,10 @@ function MsgPane({ item }) {
           <div className="mp-title" style={{ color: clsColor(msg.cls) }}>{msgLabel(msg)}</div>
           {expandBtn}
         </div>
-        <div className="mp-row">时间：<b>{fmtDateTime(msg.tsUs)}</b> · UDP</div>
-        <div className="mp-row">源：<b>{msg.src}</b>　目的：<b>{msg.dst}</b></div>
+        <div className="mp-row">{t('msg.time')}: <b>{fmtDateTime(msg.tsUs)}</b> · UDP</div>
+        <div className="mp-row">{t('msg.source')}: <b>{msg.src}</b>　{t('msg.dest')}: <b>{msg.dst}</b></div>
         <div className="mp-actions">
-          <button className="btn sm" onClick={copy}>复制原文</button>
+          <button className="btn sm" onClick={copy}>{t('msg.copy')}</button>
         </div>
       </div>
       <div className="msg-pane-body">
@@ -1033,13 +1031,13 @@ function MsgsTab({ data, rows, pick, onPick }) {
   return (
     <div style={{ flex: 1, minWidth: 0, display: 'flex', flexDirection: 'column' }}>
       <div style={{ padding: '7px 10px', borderBottom: '1px solid var(--line)', background: 'var(--bg1)', flexShrink: 0, display: 'flex', gap: 8, alignItems: 'center' }}>
-        <input className="input" placeholder="过滤信令 / 按键" value={q}
+        <input className="input" placeholder={t('msgs.filter')} value={q}
           onChange={e => setQ(e.target.value)} style={{ width: 'min(260px, 100%)' }} />
-        <span style={{ fontSize: 11.5, color: 'var(--fg3)' }}>{list.length} 条</span>
+        <span style={{ fontSize: 11.5, color: 'var(--fg3)' }}>{t('msgs.count', { n: list.length })}</span>
       </div>
       <div className="list-body tbl-scroll">
         <table className="tbl msgs-table">
-          <thead><tr><th style={{ width: 42 }}>#</th><th style={{ width: 168 }}>时间</th><th>信令 / 事件</th><th>源 → 目的</th></tr></thead>
+          <thead><tr><th style={{ width: 42 }}>#</th><th style={{ width: 168 }}>{t('msg.time')}</th><th>{t('msgs.signalCol')}</th><th>{t('msgs.endpointsCol')}</th></tr></thead>
           <tbody>
             {list.map(({ r, no }) => {
               const sel = pick?.type === r.type && pick?.idx === r.idx;
@@ -1049,7 +1047,7 @@ function MsgsTab({ data, rows, pick, onPick }) {
                   <tr key={`d${no}`} className={sel ? 'sel' : ''} onClick={() => onPick({ type: 'dtmf', idx: r.idx })}>
                     <td className="mono" style={{ color: 'var(--fg3)' }}>{no}</td>
                     <td className="mono">{fmtDateTime(d.startUs)}</td>
-                    <td><span className="dtmf-pill">DTMF 按键 {d.digit}</span> <span style={{ color: 'var(--fg3)', fontSize: 11.5 }}>{d.via}</span></td>
+                    <td><span className="dtmf-pill">{t('msg.dtmfTitle')} {d.digit}</span> <span style={{ color: 'var(--fg3)', fontSize: 11.5 }}>{d.via}</span></td>
                     <td className="mono" style={{ color: 'var(--fg3)', fontSize: 11.5 }}>{d.src || '—'} → {d.dst || '—'}</td>
                   </tr>
                 );
@@ -1245,22 +1243,22 @@ function TranscriptPanel({ sel }) {
       <React.Fragment>
         <div className="card">
           <div className="card-title" style={{ flexWrap: 'wrap', gap: 8 }}>
-            语音转写
-            <span className={`badge ${ready ? 'ok' : 'err'}`}>引擎 {ready ? '就绪' : '未配置'}</span>
+            {t('asrPanel.title')}
+            <span className={`badge ${ready ? 'ok' : 'err'}`}>{t('asrPanel.engine')} {ready ? t('asrPanel.ready') : t('asrPanel.notReady')}</span>
             {st?.activeModel && <span className="badge mut">{String(st.activeModel).split(/[\\/]/).pop()}</span>}
             <div style={{ flex: 1 }} />
             <select className="input" style={{ width: 132, height: 28 }} value={mode} disabled={busy} onChange={e => setMode(e.target.value)}>
-              <option value="merge">合并识别</option>
-              <option value="split">按方向分轨</option>
+              <option value="merge">{t('asrPanel.merge')}</option>
+              <option value="split">{t('asrPanel.split')}</option>
             </select>
             <button className="btn primary sm" onClick={start} disabled={busy || !ready}>
-              {busy ? (pct > 0 ? `识别中 ${pct}%` : '识别中…') : (res?.ok ? '重新转写' : '开始转写')}
+              {busy ? (pct > 0 ? t('asrPanel.running', { pct }) : t('asrPanel.runningDots')) : (res?.ok ? t('asrPanel.redo') : t('asrPanel.begin'))}
             </button>
           </div>
 
           {!ready && (
             <div style={{ fontSize: 12, color: 'var(--fg3)', lineHeight: 1.8 }}>
-              还没有可用的识别环境，请先到顶部「语音转写」菜单下载引擎与模型。
+              {t('asrPanel.noEngine')}
             </div>
           )}
 
@@ -1268,7 +1266,7 @@ function TranscriptPanel({ sel }) {
             <div style={{ marginTop: 10 }}>
               <div className="upd-prog" data-idle={pct < 2 || undefined}><i style={{ width: `${Math.max(4, pct)}%` }} /></div>
               <div style={{ fontSize: 11.5, color: 'var(--fg3)', marginTop: 5 }}>
-                本机离线识别 · 已用 {fmtElapsed(job?.elapsed)} · 可切换页面，任务会继续
+                {t('asrPanel.local', { t: fmtElapsed(job?.elapsed) })}
               </div>
             </div>
           )}
@@ -1284,21 +1282,21 @@ function TranscriptPanel({ sel }) {
         {res?.ok && (
           <div className="card">
             <div className="card-title" style={{ flexWrap: 'wrap' }}>
-              识别结果
+              {t('asrPanel.result')}
               <span className="badge ok">{res.model}</span>
-              <span className="badge mut">{res.segments.length} 段</span>
+              <span className="badge mut">{t('asrPanel.segments', { n: res.segments.length })}</span>
               <div style={{ flex: 1 }} />
-              <input className="input" style={{ width: 200, height: 28 }} placeholder="搜索文本…" value={q} onChange={e => setQ(e.target.value)} />
+              <input className="input" style={{ width: 200, height: 28 }} placeholder={t('asrPanel.search')} value={q} onChange={e => setQ(e.target.value)} />
             </div>
             <div style={{ maxHeight: 420, overflow: 'auto' }}>
               {segs.map((s, i) => (
                 <div key={i} style={{ display: 'flex', gap: 10, padding: '7px 2px', borderBottom: '1px solid var(--line)', fontSize: 13 }}>
                   <span className="mono" style={{ color: 'var(--accent)', minWidth: 68 }}>{s.startFmt || '00:00.0'}</span>
-                  {s.ch && s.ch !== 'mix' && <span className="badge mut" style={{ minWidth: 46 }}>{s.ch === 'a' ? '主叫' : '被叫'}</span>}
+                  {s.ch && s.ch !== 'mix' && <span className="badge mut" style={{ minWidth: 46 }}>{s.ch === 'a' ? t('asrPanel.caller') : t('asrPanel.callee')}</span>}
                   <span style={{ flex: 1 }}>{s.text}</span>
                 </div>
               ))}
-              {segs.length === 0 && <div className="empty">无匹配文本</div>}
+              {segs.length === 0 && <div className="empty">{t('asrPanel.noMatch')}</div>}
             </div>
           </div>
         )}
