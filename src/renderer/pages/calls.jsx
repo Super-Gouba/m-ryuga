@@ -78,8 +78,12 @@ function CallsPage() {
             <input className="input" placeholder={t('list.search')} value={q} onChange={e => setQ(e.target.value)} />
           </div>
           <div className="row">
-            <span className="chip" data-on={!onlyIssue || undefined} onClick={() => setOnlyIssue(false)}>{t('list.all')}</span>
-            <span className="chip" data-on={onlyIssue || undefined} onClick={() => setOnlyIssue(true)}>{t('list.issues')}</span>
+            <span className="chip" role="tab" aria-selected={!onlyIssue} tabIndex={0}
+              data-on={!onlyIssue || undefined} onClick={() => setOnlyIssue(false)}
+              onKeyDown={e => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); setOnlyIssue(false); } }}>{t('list.all')}</span>
+            <span className="chip" role="tab" aria-selected={onlyIssue} tabIndex={0}
+              data-on={onlyIssue || undefined} onClick={() => setOnlyIssue(true)}
+              onKeyDown={e => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); setOnlyIssue(true); } }}>{t('list.issues')}</span>
             <div style={{ flex: 1 }} />
             <span style={{ fontSize: 11.5, color: 'var(--fg3)' }}>{list.length}</span>
           </div>
@@ -98,11 +102,13 @@ function CallsPage() {
                 return (
                   <div key={c.id} className="call-row" data-sel={sel || undefined} data-sev={s.sev || 'ok'}
                     style={{ position: 'absolute', top: idx * ROW_H, left: 0, right: 0, height: ROW_H }}
-                    onClick={() => dispatch({ type: 'select', sel: { fileId: c.fileId, callId: c.callId } })}>
+                    role="option" aria-selected={sel} tabIndex={0}
+                    onClick={() => dispatch({ type: 'select', sel: { fileId: c.fileId, callId: c.callId } })}
+                    onKeyDown={e => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); dispatch({ type: 'select', sel: { fileId: c.fileId, callId: c.callId } }); } }}>
                     <div className="call-route">
-                      <span className="who">{s.fromUser || '未知'}</span>
+                      <span className="who">{s.fromUser || t('list.unknownUser')}</span>
                       <span className="arrow">→</span>
-                      <span className="who">{s.toUser || '未知'}</span>
+                      <span className="who">{s.toUser || t('list.unknownUser')}</span>
                     </div>
                     <div className="call-meta">
                       <span className="mono">{fmtTimeDay(s.tStart)}</span>
@@ -166,7 +172,7 @@ function CallDetail({ sel }) {
       <div className="detail-head">
         <div style={{ display: 'flex', flexDirection: 'column', gap: 2, minWidth: 0 }}>
           <div className="dh-route">
-            {s.fromUser || '未知'} <span className="arrow">→</span> {s.toUser || '未知'}
+            {s.fromUser || t('list.unknownUser')} <span className="arrow">→</span> {s.toUser || t('list.unknownUser')}
           </div>
           <div className="dh-kv" style={{ fontSize: 11 }}>
             Call-ID <b title={call.callId} style={{ maxWidth: 420, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{trunc(call.callId, 46)}</b>
@@ -181,9 +187,11 @@ function CallDetail({ sel }) {
         <SevBadge sev={s.sev} />
       </div>
 
-      <div className="detail-tabs">
+      <div className="detail-tabs" role="tablist">
         {tabs.map(([id, label, count]) => (
-          <div key={id} className="tab" data-active={tab === id || undefined} onClick={() => setTab(id)}>
+          <div key={id} className="tab" data-active={tab === id || undefined} onClick={() => setTab(id)}
+            role="tab" aria-selected={tab === id} tabIndex={0}
+            onKeyDown={e => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); setTab(id); } }}>
             {label}{count ? <span className="t-count">{count}</span> : null}
           </div>
         ))}
@@ -624,7 +632,9 @@ function LadderDiagram({ data, rows, pick, onPick }) {
             const x1 = actorX(from), x2 = actorX(to);
             const mid = (x1 + x2) / 2;
             return (
-              <g key={`d${ri}`} onClick={() => onPick({ type: 'dtmf', idx: r.idx })} style={{ cursor: 'pointer' }}>
+              <g key={`d${ri}`} role="button" tabIndex={0} onClick={() => onPick({ type: 'dtmf', idx: r.idx })}
+                onKeyDown={e => { if (e.key === 'Enter') { e.preventDefault(); onPick({ type: 'dtmf', idx: r.idx }); } }}
+                style={{ cursor: 'pointer' }}>
                 <rect className="ladder-row" x={0} y={y - h * 0.55} width={W} height={h} fill={active ? 'var(--warn-bg)' : 'transparent'} />
                 {active && <rect x={0} y={y - h * 0.55} width={3} height={h} fill="var(--amber)" />}
                 <text x={offX + 12} y={y + 3.5} fontSize={10.5} fill="var(--fg3)" fontFamily="var(--font-mono)">{rel}</text>
@@ -648,7 +658,9 @@ function LadderDiagram({ data, rows, pick, onPick }) {
               ? `${x2 - 7},${y - 3} ${x2},${y} ${x2 - 7},${y + 3}`
               : `${x2 + 7},${y - 3} ${x2},${y} ${x2 + 7},${y + 3}`;
             return (
-              <g key={`r${ri}`} onClick={() => onPick({ type: 'rtp', idx: r.idx })} style={{ cursor: 'pointer' }}>
+              <g key={`r${ri}`} role="button" tabIndex={0} onClick={() => onPick({ type: 'rtp', idx: r.idx })}
+                onKeyDown={e => { if (e.key === 'Enter') { e.preventDefault(); onPick({ type: 'rtp', idx: r.idx }); } }}
+                style={{ cursor: 'pointer' }}>
                 <rect className="ladder-row" x={0} y={y - h * 0.55} width={W} height={h} fill={active ? 'var(--warn-bg)' : 'transparent'} />
                 {active && <rect x={0} y={y - h * 0.55} width={3} height={h} fill="var(--orange)" />}
                 <text x={offX + 12} y={y + 3.5} fontSize={10.5} fill="var(--fg3)" fontFamily="var(--font-mono)">{rel}</text>
@@ -674,7 +686,9 @@ function LadderDiagram({ data, rows, pick, onPick }) {
             : `${x2 + 8},${y - 3.5} ${x2},${y} ${x2 + 8},${y + 3.5}`;
           const mid = (x1 + x2) / 2;
           return (
-            <g key={`s${ri}`} onClick={() => onPick({ type: 'sip', idx: r.idx })} style={{ cursor: 'pointer' }}>
+            <g key={`s${ri}`} role="button" tabIndex={0} onClick={() => onPick({ type: 'sip', idx: r.idx })}
+              onKeyDown={e => { if (e.key === 'Enter') { e.preventDefault(); onPick({ type: 'sip', idx: r.idx }); } }}
+              style={{ cursor: 'pointer' }}>
               {ri % 2 === 1 && <rect x={0} y={y - h * 0.55} width={W} height={h} fill="rgba(22,32,43,.016)" />}
               <rect className="ladder-row" x={0} y={y - h * 0.55} width={W} height={h}
                 fill={active ? 'var(--accent-soft)' : 'transparent'} />
@@ -830,10 +844,12 @@ function MessageModal({ item, onClose }) {
   const [max, setMax] = useState(false);
   const [wrap, setWrap] = useState(true);
   const [copied, setCopied] = useState('');
+  const dialogRef = useRef(null);
 
   useEffect(() => {
     const onKey = e => { if (e.key === 'Escape') onClose(); };
     window.addEventListener('keydown', onKey);
+    dialogRef.current?.focus(); // 键盘用户 Tab 从弹窗内开始
     return () => window.removeEventListener('keydown', onKey);
   }, [onClose]);
 
@@ -901,7 +917,8 @@ function MessageModal({ item, onClose }) {
 
   return (
     <div className="modal-mask" onMouseDown={e => { if (e.target === e.currentTarget) onClose(); }}>
-      <div className={`msg-modal ${max ? 'is-max' : ''}`} onMouseDown={e => e.stopPropagation()}>
+      <div ref={dialogRef} tabIndex={-1} className={`msg-modal ${max ? 'is-max' : ''}`} onMouseDown={e => e.stopPropagation()}
+        role="dialog" aria-modal="true" aria-label={title}>
         <div className="msg-modal-head">
           <span className="mm-title">{title}</span>
           <span className="mm-sub">{typeLabel}</span>
@@ -918,7 +935,9 @@ function MessageModal({ item, onClose }) {
           <div className="mm-section">{t('mm.details')}</div>
           <div className="mm-meta">
             {meta.map(([k, v]) => (
-              <div key={k} className="mm-cell" onClick={() => copyField(k, v)} title={`${metaLabel(k)}: ${v}\n${t('mm.copyHint')}`}>
+              <div key={k} className="mm-cell" role="button" tabIndex={0} onClick={() => copyField(k, v)}
+                onKeyDown={e => { if (e.key === 'Enter') { e.preventDefault(); copyField(k, v); } }}
+                title={`${metaLabel(k)}: ${v}\n${t('mm.copyHint')}`}>
                 <div className={`mm-k ${copied === k ? 'is-copied' : ''}`}>{metaLabel(k)}{copied === k ? ' ✓' : ''}</div>
                 <div className={`mm-v ${MONO_FIELDS.test(k) ? 'mono' : ''}`}>{String(v)}</div>
               </div>
@@ -1044,7 +1063,9 @@ function MsgsTab({ data, rows, pick, onPick }) {
               if (r.type === 'dtmf') {
                 const d = data.dtmf[r.idx];
                 return (
-                  <tr key={`d${no}`} className={sel ? 'sel' : ''} onClick={() => onPick({ type: 'dtmf', idx: r.idx })}>
+                  <tr key={`d${no}`} className={sel ? 'sel' : ''} tabIndex={0}
+                    onClick={() => onPick({ type: 'dtmf', idx: r.idx })}
+                    onKeyDown={e => { if (e.key === 'Enter') { e.preventDefault(); onPick({ type: 'dtmf', idx: r.idx }); } }}>
                     <td className="mono" style={{ color: 'var(--fg3)' }}>{no}</td>
                     <td className="mono">{fmtDateTime(d.startUs)}</td>
                     <td><span className="dtmf-pill">{t('msg.dtmfTitle')} {d.digit}</span> <span style={{ color: 'var(--fg3)', fontSize: 11.5 }}>{d.via}</span></td>
@@ -1054,7 +1075,9 @@ function MsgsTab({ data, rows, pick, onPick }) {
               }
               const m = data.msgs[r.idx];
               return (
-                <tr key={`s${no}`} className={sel ? 'sel' : ''} onClick={() => onPick({ type: 'sip', idx: r.idx })}>
+                <tr key={`s${no}`} className={sel ? 'sel' : ''} tabIndex={0}
+                  onClick={() => onPick({ type: 'sip', idx: r.idx })}
+                  onKeyDown={e => { if (e.key === 'Enter') { e.preventDefault(); onPick({ type: 'sip', idx: r.idx }); } }}>
                   <td className="mono" style={{ color: 'var(--fg3)' }}>{no}</td>
                   <td className="mono">{fmtDateTime(m.tsUs)}</td>
                   <td className={`cls-${m.cls}`} style={{ fontWeight: 600 }}>{m.startLine}</td>
@@ -1079,7 +1102,7 @@ function CheckTab({ call, sel }) {
     let alive = true;
     api.mediaAnalyze(sel.fileId, sel.callId).then(r => {
       if (!alive) return;
-      if (r.ok) setMedia(r); else setMediaErr(r.error || '媒体分析失败');
+      if (r.ok) setMedia(r); else setMediaErr(r.error || t('audio.analysisFail'));
     }).catch(e => alive && setMediaErr(String(e.message || e)));
     return () => { alive = false; };
   }, [sel]);
@@ -1096,8 +1119,8 @@ function CheckTab({ call, sel }) {
     return () => { alive = false; };
   }, [sel, call]);
   const issues = [
-    ...(diag.signalingIssues || []).map(i => ({ ...i, cat: '信令' })),
-    ...(diag.mediaIssues || []).map(i => ({ ...i, cat: '媒体' }))
+    ...(diag.signalingIssues || []).map(i => ({ ...i, cat: t('issue.sig') })),
+    ...(diag.mediaIssues || []).map(i => ({ ...i, cat: t('issue.med') }))
   ];
 
   return (
@@ -1320,7 +1343,7 @@ function AudioTab({ sel, soloKey, call }) {
   useEffect(() => {
     setLoading(true);
     api.mediaAnalyze(sel.fileId, sel.callId)
-      .then(r => { if (r.ok) setMedia(r); else setErr(r.error || '媒体分析失败'); })
+      .then(r => { if (r.ok) setMedia(r); else setErr(r.error || t('audio.analysisFail')); })
       .catch(e => setErr(String(e.message || e)))
       .finally(() => setLoading(false));
   }, [sel]);
@@ -1734,8 +1757,19 @@ function AudioWave({ waveform, marks = [], dtmf = [], firstUs, dur = 0, totalSec
 
   return (
     <div className="awave">
-      <canvas ref={ref} style={{ width: '100%', height: 104, display: 'block' }}
+      <canvas ref={ref} role="slider" tabIndex={0}
+        aria-label={t('audio.waveSeek') || 'Playback position'}
+        aria-valuemin={0} aria-valuemax={Math.round(totalSec)} aria-valuenow={Math.round(cur)}
+        style={{ width: '100%', height: 104, display: 'block' }}
         onClick={e => onSeek?.(toSec(e))}
+        onKeyDown={e => {
+          if (!onSeek || !totalSec) return;
+          const step = e.shiftKey ? 30 : 5;
+          if (e.key === 'ArrowLeft') { e.preventDefault(); onSeek(Math.max(0, cur - step)); }
+          else if (e.key === 'ArrowRight') { e.preventDefault(); onSeek(Math.min(totalSec, cur + step)); }
+          else if (e.key === 'Home') { e.preventDefault(); onSeek(0); }
+          else if (e.key === 'End') { e.preventDefault(); onSeek(totalSec); }
+        }}
         onMouseMove={e => setHover(toSec(e))}
         onMouseLeave={() => setHover(null)} />
       {hover != null && (
@@ -1800,7 +1834,7 @@ function ExportTab({ sel }) {
       if (active.wav) list.push({ type: 'wav', outPath: outDir });
       if (active.report) list.push({ type: 'report', outPath: `${outDir}/report_${safe}.html` });
       const res = await api.exportRun({ fileId: sel.fileId, callId: sel.callId, items: list, opts: { maskUser, maskIp } });
-      if (res.ok) { setResults(res.results); showToast('ok', '导出完成'); }
+      if (res.ok) { setResults(res.results); showToast('ok', t('export.done')); }
       else showToast('err', res.error);
     } finally { setBusy(false); }
   };
@@ -1809,29 +1843,29 @@ function ExportTab({ sel }) {
     <div className="detail-scroll">
       <div style={{ display: 'flex', flexDirection: 'column', gap: 12, maxWidth: 720 }}>
         <div className="card">
-          <div className="card-title">导出内容</div>
+          <div className="card-title">{t('export.items')}</div>
           {textOnly && (
             <div style={{ fontSize: 12, color: 'var(--fg3)', marginBottom: 8, lineHeight: 1.7 }}>
-              当前为文本信令日志：不含原始报文与 RTP 媒体，仅支持导出 HTML 分析报告。
+              {t('export.textOnly')}
             </div>
           )}
           <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
             <label className="ck" style={textOnly ? { opacity: .5 } : undefined}>
-              <input type="checkbox" checked={active.pcapng} disabled={textOnly} onChange={e => setItems(i => ({ ...i, pcapng: e.target.checked }))} />原始关联报文（PCAPNG，本通话 SIP + RTP）
+              <input type="checkbox" checked={active.pcapng} disabled={textOnly} onChange={e => setItems(i => ({ ...i, pcapng: e.target.checked }))} />{t('export.pcapng')}
             </label>
             <label className="ck" style={textOnly ? { opacity: .5 } : undefined}>
-              <input type="checkbox" checked={active.wav} disabled={textOnly} onChange={e => setItems(i => ({ ...i, wav: e.target.checked }))} />分方向 WAV（主叫 / 被叫 / 混合）
+              <input type="checkbox" checked={active.wav} disabled={textOnly} onChange={e => setItems(i => ({ ...i, wav: e.target.checked }))} />{t('export.wav')}
             </label>
-            <label className="ck"><input type="checkbox" checked={active.report} onChange={e => setItems(i => ({ ...i, report: e.target.checked }))} />HTML 分析报告（自包含单文件）</label>
+            <label className="ck"><input type="checkbox" checked={active.report} onChange={e => setItems(i => ({ ...i, report: e.target.checked }))} />{t('export.report')}</label>
           </div>
-          <div className="card-title" style={{ marginTop: 14 }}>隐私遮蔽</div>
+          <div className="card-title" style={{ marginTop: 14 }}>{t('export.privacy')}</div>
           <div style={{ display: 'flex', gap: 18, flexWrap: 'wrap' }}>
-            <label className="ck"><input type="checkbox" checked={maskUser} onChange={e => setMaskUser(e.target.checked)} />遮蔽号码（保留后 4 位）</label>
-            <label className="ck"><input type="checkbox" checked={maskIp} onChange={e => setMaskIp(e.target.checked)} />遮蔽 IP（保留前 2 段）</label>
+            <label className="ck"><input type="checkbox" checked={maskUser} onChange={e => setMaskUser(e.target.checked)} />{t('export.maskUser')}</label>
+            <label className="ck"><input type="checkbox" checked={maskIp} onChange={e => setMaskIp(e.target.checked)} />{t('export.maskIp')}</label>
           </div>
           <div style={{ marginTop: 14 }}>
             <button className="btn primary" disabled={busy || (!active.pcapng && !active.wav && !active.report)} onClick={run}>
-              {busy ? '导出中…' : '选择目录并导出'}
+              {busy ? t('export.running') : t('export.run')}
             </button>
           </div>
         </div>

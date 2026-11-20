@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import { useStore, api, registerPages, fmtBytes } from '../App.jsx';
 import { t, getLang, setLang } from '../i18n.js';
 
@@ -76,7 +76,10 @@ function SettingsPage() {
           <div key={g.titleKey}>
             <div className="sn-group">{t(g.titleKey)}</div>
             {g.items.map(it => (
-              <div key={it.id} className="sn-item" data-active={pane === it.id || undefined} onClick={() => setPane(it.id)}>
+              <div key={it.id} className="sn-item" data-active={pane === it.id || undefined}
+                role="tab" aria-selected={pane === it.id} tabIndex={0}
+                onClick={() => setPane(it.id)}
+                onKeyDown={e => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); setPane(it.id); } }}>
                 <span className="sn-ico">{it.icon}</span>{t(it.key)}
               </div>
             ))}
@@ -252,7 +255,9 @@ function SettingsPage() {
                     <div className="set-desc">{t('set.autoCheckDesc')}</div>
                   </div>
                   <div className={`switch ${upd?.startupCheck ? 'on' : ''}`} role="switch" aria-checked={!!upd?.startupCheck}
-                    onClick={() => api.updateSetStartup(!upd?.startupCheck).then(loadUpd)} />
+                    tabIndex={0} aria-label={t('set.autoCheck')}
+                    onClick={() => api.updateSetStartup(!upd?.startupCheck).then(loadUpd)}
+                    onKeyDown={e => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); api.updateSetStartup(!upd?.startupCheck).then(loadUpd); } }} />
                 </div>
                 {upd?.ignoredVersion && (
                   <div className="set-row">
@@ -453,7 +458,8 @@ function ChangelogModal({ current, onClose }) {
           <aside style={{ width: 196, flexShrink: 0, borderRight: '1px solid var(--line)', overflow: 'auto', padding: '6px 0' }}>
             {loading && <div style={{ padding: '14px 16px', fontSize: 12, color: 'var(--fg3)' }}>{t('set.changelogLoading')}</div>}
             {(items || []).map(it => (
-              <div key={it.tag} onClick={() => setSel(it.tag)}
+              <div key={it.tag} role="button" tabIndex={0} onClick={() => setSel(it.tag)}
+                onKeyDown={e => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); setSel(it.tag); } }}
                 style={{
                   padding: '8px 14px', cursor: 'pointer',
                   borderLeft: sel === it.tag ? '2px solid var(--accent)' : '2px solid transparent',
@@ -499,15 +505,23 @@ function ChangelogModal({ current, onClose }) {
 
 /* ---------- 关闭弹窗 ---------- */
 function CloseModal({ onClose }) {
+  const dialogRef = useRef(null);
   const [remember, setRemember] = useState(false);
   const [choice, setChoice] = useState('tray');
   const cancel = async () => { await api.cancelClose(); onClose(); };
   // 确认后必须清掉渲染层的 closeReq，否则从托盘恢复窗口时弹窗仍然停留在界面上
   const confirm = async () => { await api.resolveClose(choice, remember); onClose(); };
+  // Esc 取消关闭（与点 ✕ 一致，避免误触退出）
+  useEffect(() => {
+    const onKey = e => { if (e.key === 'Escape') cancel(); };
+    window.addEventListener('keydown', onKey);
+    dialogRef.current?.focus();
+    return () => window.removeEventListener('keydown', onKey);
+  }, []);
 
   return (
     <Overlay>
-      <div className="close-modal">
+      <div ref={dialogRef} tabIndex={-1} className="close-modal" role="dialog" aria-modal="true" aria-label={t('close.title')}>
         <div className="cm-head">
           <div className="cm-ico" data-tone={choice === 'exit' ? 'danger' : 'ok'}>
             {choice === 'exit' ? '⏻' : '⇲'}

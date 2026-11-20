@@ -291,9 +291,12 @@ function AppBar({ page, setPage, callCount, onImport, busy }) {
         </div>
       </div>
 
-      <nav className="mainnav">
+      <nav className="mainnav" role="tablist" aria-label={t('brand.sub')}>
         {NAV.map(([id, ico]) => (
-          <div key={id} className="navitem" data-active={page === id || undefined} onClick={() => setPage(id)}>
+          <div key={id} className="navitem" role="tab" aria-selected={page === id}
+            tabIndex={0} data-active={page === id || undefined}
+            onClick={() => setPage(id)}
+            onKeyDown={e => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); setPage(id); } }}>
             <span className="n-ico">{ico}</span>{t(`nav.${id}`)}
             {id === 'calls' && callCount > 0 && <span className="n-count">{callCount > 999 ? '999+' : callCount}</span>}
           </div>
@@ -328,8 +331,9 @@ function SearchBar() {
         <div className="searchpop">
           {hits.length === 0 && <div className="sp-empty">{t('list.empty')}</div>}
           {hits.slice(0, 30).map(c => (
-            <div key={c.id} className="sp-row"
-              onClick={() => { dispatch({ type: 'select', sel: { fileId: c.fileId, callId: c.callId } }); setQ(''); }}>
+            <div key={c.id} className="sp-row" role="option" tabIndex={0}
+              onClick={() => { dispatch({ type: 'select', sel: { fileId: c.fileId, callId: c.callId } }); setQ(''); }}
+              onKeyDown={e => { if (e.key === 'Enter') { dispatch({ type: 'select', sel: { fileId: c.fileId, callId: c.callId } }); setQ(''); } }}>
               <div style={{ display: 'flex', justifyContent: 'space-between', gap: 8, alignItems: 'center' }}>
                 <span className="mono" style={{ fontSize: 12.5, fontWeight: 600 }}>{trunc(c.callId, 28)}</span>
                 <SevBadge sev={c.summary.sev} />
@@ -354,12 +358,17 @@ function FileTabs({ files, activeFile, calls, onPick, onRemove, onImport }) {
   const maxDiff = calls.reduce((m, c) => Math.max(m, c.summary?.mediaCount || 0), 0);
   return (
     <div className="filetabs">
-      <div className="filetab" data-active={!activeFile || undefined} onClick={() => onPick('')}>
+      <div className="filetab" data-active={!activeFile || undefined} onClick={() => onPick('')} role="tab"
+        tabIndex={0} aria-selected={!activeFile}
+        onKeyDown={e => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); onPick(''); } }}>
         <span className="ft-ico">▦</span>{t('tabs.all')}
       </div>
       {files.map(f => (
         <div key={f.fileId} className="filetab" data-active={activeFile === f.fileId || undefined}
-          onClick={() => onPick(f.fileId)} title={`${f.path}${f.format === 'text' ? '（文本信令日志）' : ''}`}>
+          role="tab" tabIndex={0} aria-selected={activeFile === f.fileId}
+          onClick={() => onPick(f.fileId)}
+          onKeyDown={e => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); onPick(f.fileId); } }}
+          title={`${f.path}${f.format === 'text' ? ` · ${t('tabs.textLog')}` : ''}`}>
           <span className="ft-ico">{f.format === 'text' ? '≡' : '◧'}</span>
           <span className="ft-name">{f.fileName}</span>
           <button className="ft-close" title={t('tabs.closeFile') || 'Close'}
@@ -417,7 +426,7 @@ export function SevBadge({ sev }) {
 function Toast({ toast }) {
   const err = toast.kind === 'err';
   return (
-    <div style={{
+    <div role={err ? 'alert' : 'status'} aria-live={err ? 'assertive' : 'polite'} style={{
       position: 'fixed', bottom: 38, left: '50%', transform: 'translateX(-50%)', zIndex: 300,
       background: '#fff', border: `1px solid ${err ? '#fbd5d5' : 'var(--line2)'}`,
       borderLeft: `3px solid ${err ? 'var(--red)' : 'var(--green)'}`,
@@ -547,7 +556,9 @@ export function Splitter({ drag, label = '调整宽度' }) {
 export function EmptyDropHint() {
   const { pick } = useImporter();
   return (
-    <div className="dropzone" onClick={pick} style={{ cursor: 'pointer' }}>
+    <div className="dropzone" onClick={pick} role="button" tabIndex={0}
+      onKeyDown={e => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); pick(); } }}
+      style={{ cursor: 'pointer' }}>
       <div className="dz-ico">⇩</div>
       <div className="dz-title">{t('drop.title')}</div>
       <div className="dz-sub">

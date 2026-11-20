@@ -102,8 +102,24 @@ body {
 ::-webkit-scrollbar-corner { background: transparent; }
 
 input, textarea, select, button { font-family: inherit; color: inherit; font-size: inherit; }
-input:focus-visible, textarea:focus-visible, select:focus-visible, button:focus-visible {
-  outline: 2px solid rgba(82,103,192,.32); outline-offset: 1px;
+input:focus-visible, textarea:focus-visible, select:focus-visible, button:focus-visible,
+[role="tab"]:focus-visible, [role="option"]:focus-visible, [role="switch"]:focus-visible, [role="button"]:focus-visible,
+canvas[role="slider"]:focus-visible, tr[tabindex]:focus-visible {
+  outline: 2px solid rgba(61,91,217,.55); outline-offset: 1px;
+  border-radius: var(--r-sm);
+}
+
+table.tbl tbody tr[tabindex] { cursor: pointer; }
+table.tbl tbody tr[tabindex]:focus-visible { outline-offset: -2px; }
+
+/* 系统开启「减少动态效果」时停用过渡与动画（可访问性） */
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after {
+    animation-duration: .01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: .01ms !important;
+    scroll-behavior: auto !important;
+  }
 }
 
 /* ============ 通用控件 ============ */
