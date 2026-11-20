@@ -4,6 +4,24 @@ All notable changes to this project are documented in this file.
 The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and this project
 adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.0.16] — 2026-11-20
+
+### Fixed
+- **Keyboard accessibility gaps** — message-table rows, ladder (sequence-diagram) rows, the update-log
+  version list and message-detail field cells were mouse-only. They now take focus (`Tab`) and respond to
+  `Enter` / `Space`.
+- **Audio waveform could not be reached by keyboard** — the waveform is now a slider (`role="slider"` with
+  `aria-valuenow`); `←`/`→` seek ±5 s, `Shift` + arrow seeks ±30 s, `Home` / `End` jump to the start / end.
+- **Dialogs trapped focus outside** — the message-detail and close-confirmation dialogs now move focus into
+  the dialog on open and keep `Esc` as cancel.
+- **Focus ring missing on custom controls** — focus outlines now also cover the canvas slider and focusable
+  table rows.
+
+### Changed
+- **English UI cleanup** — a few remaining hard-coded Chinese strings in the message table, ladder and
+  transcript panel now go through the i18n layer.
+- Toast notifications expose `role="status"` / `aria-live` so screen readers announce import results and errors.
+
 ## [1.0.15] — 2026-11-19
 
 ### Fixed
