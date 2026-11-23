@@ -4,7 +4,7 @@ const path = require('path');
 const fs = require('fs');
 const crypto = require('crypto');
 
-const { analyzeFile, analyzeMedia, callLadder, scanCallDtmf } = require('../core/analysis/pipeline');
+const { analyzeFile, analyzeMedia, callLadder, scanCallDtmf, sdpMediaEndpoints } = require('../core/analysis/pipeline');
 const { runExport } = require('../core/export/exporter');
 const { matchTransactions, extractTransfers, applyCalibration, findCandidates } = require('../core/analysis/compare');
 const { sniffFormat } = require('../core/pcap/reader');
@@ -92,6 +92,9 @@ function registerIpc(app, win) {
     if (!s) return { ok: false, error: '会话不存在' };
     let dtmf = [];
     try { dtmf = await scanCallDtmf(s, callId); } catch { dtmf = []; }
+    // 按键行与 RTP 行一样，按 SDP 声明的媒体端点落位（实际抓包地址保留在 observedSrc/observedDst）
+    const { resolve } = sdpMediaEndpoints(s, callId);
+    dtmf = dtmf.map(d => ({ ...d, observedSrc: d.src, observedDst: d.dst, src: resolve(d.src), dst: resolve(d.dst) }));
     return { ok: true, ...callLadder(s, callId), dtmf };
   });
 

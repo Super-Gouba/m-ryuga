@@ -4,6 +4,27 @@ All notable changes to this project are documented in this file.
 The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and this project
 adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.0.18] — 2026-11-23
+
+### Fixed
+- **Media participants in the ladder now come from SDP** — RTP rows used to be attached to whichever participant had the same IP,
+  so media often appeared to flow to/from a *signaling* port (for example `172.16.167.48:9080` instead of the negotiated
+  `121.41.91.21:24490`). Media endpoints are now read from the SDP `c=` address and `m=` port, shown as dedicated
+  participants, and RTP/DTMF rows are drawn between them. When a NAT or media gateway rewrites the address, the row falls back
+  to the matching SDP endpoint by port and the address actually seen in the capture is kept as *Observed in capture* in the row
+  tooltip and details panel.
+- **Wide ladders are scrollable again** — the diagram width now covers every participant, so additional media endpoints are no
+  longer clipped.
+
+### Changed
+- **Update check runs on every launch** — previously a check was skipped if another had run within 24 hours, so a freshly
+  published release could stay unnoticed. The app now checks about 5 seconds after start-up and offers the update dialog
+  (download & install / remind later / ignore this version). Only a check performed in the last 10 minutes is reused.
+
+### Tests
+- New self-test pins SDP media endpoint resolution: exact match, port-based fallback for NAT-rewritten addresses, and
+  pass-through when nothing matches.
+
 ## [1.0.17] — 2026-11-23
 
 ### Fixed

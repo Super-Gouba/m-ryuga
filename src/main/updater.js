@@ -6,7 +6,6 @@ const fs = require('fs');
 const path = require('path');
 
 const REPO = 'Super-Gouba/m-ryuga'; // GitHub owner/repo（发布页）
-const CHECK_INTERVAL = 24 * 3600 * 1000;
 
 class Updater {
   constructor(app, win, userData) {
@@ -29,12 +28,12 @@ class Updater {
 
   scheduleStartupCheck() {
     if (!this.enabled) return;
-    if (Date.now() - this.lastCheck < CHECK_INTERVAL) {
-      // 24h 内已查过 → 静默跳过；但若上次查到新版本且用户选了稍后提醒，启动时再提示
+    // 每次启动都检查新版本；仅在 10 分钟内已查过时复用结果（避免快速重启反复请求）
+    if (Date.now() - this.lastCheck < 10 * 60 * 1000) {
       if (this.settings.pendingRelease) this.notify(this.settings.pendingRelease, true);
       return;
     }
-    setTimeout(() => this.check(false), 8000); // 启动 8s 后后台检查
+    setTimeout(() => this.check(false), 5000); // 启动 5s 后后台检查，有新版即弹窗供用户选择
   }
 
   async check(manual = true) {

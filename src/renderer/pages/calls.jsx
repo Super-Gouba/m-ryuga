@@ -565,11 +565,11 @@ function LadderDiagram({ data, rows, pick, onPick }) {
 
   const ROW_H = 44, DTMF_H = 34, HEAD_H = 70, GUTTER = 100, PAD_R = 28;
   const avail = Math.max(cw || 640, 420);
-  // 参与方间距随容器伸缩（上限 600，避免超宽屏箭头过长），空间富余时整块居中
-  const ACTOR_W = Math.max(140, Math.min(600, (avail - GUTTER - PAD_R) / Math.max(1, actors.length)));
+  // 参与方间距随容器伸缩（上限 480，避免超宽屏箭头过长）；媒体端点加入后放不下时横向滚动
+  const ACTOR_W = Math.max(120, Math.min(480, (avail - GUTTER - PAD_R) / Math.max(1, actors.length)));
   const blockW = GUTTER + ACTOR_W * actors.length + PAD_R;
   const offX = Math.max(0, Math.round((avail - blockW) / 2));
-  const W = avail;
+  const W = Math.max(avail, blockW);
   const actorX = i => offX + GUTTER + ACTOR_W * i + ACTOR_W / 2;
   const t0 = rows[0]?.tsUs ?? 0;
   const callerIdx = lanes.find(l => l.cls === 'inv')?.from ?? 0;
@@ -670,7 +670,7 @@ function LadderDiagram({ data, rows, pick, onPick }) {
                   fill="var(--orange)" fontFamily="var(--font-mono)">
                   {`RTP (${md.codec}) · ${md.packets} 包`}
                 </text>
-                <title>{`RTP ${md.codec} · ${md.packets} 包\n${md.src} → ${md.dst}\n点击试听该方向音频`}</title>
+                <title>{`RTP ${md.codec} · ${md.packets} 包\n${md.src} → ${md.dst}${(md.observedSrc && (md.observedSrc !== md.src || md.observedDst !== md.dst)) ? `\n${t('mm.observed')}: ${md.observedSrc} → ${md.observedDst}` : ''}\n点击试听该方向音频`}</title>
               </g>
             );
           }
@@ -834,10 +834,11 @@ const META_LABEL_KEY = {
   TIME: 'mm.time', SRC: 'mm.src', DST: 'mm.dst', STATUS: 'mm.status', METHOD: 'mm.method',
   CSEQ: 'mm.cseq', 'CALL-ID': 'mm.callid', FROM: 'mm.from', TO: 'mm.to', 'USER-AGENT': 'mm.ua',
   CHANNEL: 'mm.channel', DURATION: 'mm.duration', CODEC: 'mm.codec', PACKETS: 'mm.packets',
-  START: 'mm.start', END: 'mm.end', SPAN: 'mm.span', LOST: 'mm.lost', JITTER: 'mm.jitter', DIGIT: 'mm.digit'
+  START: 'mm.start', END: 'mm.end', SPAN: 'mm.span', LOST: 'mm.lost', JITTER: 'mm.jitter', DIGIT: 'mm.digit',
+  OBSERVED: 'mm.observed'
 };
 const metaLabel = k => (META_LABEL_KEY[k] ? t(META_LABEL_KEY[k]) : k);
-const MONO_FIELDS = /^(TIME|START|END|CSEQ|PACKETS|STATUS|DIGIT|LOST|JITTER|SPAN|DURATION)$/;
+const MONO_FIELDS = /^(TIME|START|END|CSEQ|PACKETS|STATUS|DIGIT|LOST|JITTER|SPAN|DURATION|OBSERVED)$/;
 
 function MessageModal({ item, onClose }) {
   const { showToast } = useStore();
@@ -884,6 +885,9 @@ function MessageModal({ item, onClose }) {
       ['CHANNEL', d.via], ['DURATION', d.durationMs != null ? `${Math.round(d.durationMs)} ms` : '—'],
       ['SRC', d.src || '—'], ['DST', d.dst || '—']
     );
+    if (d.observedSrc && (d.observedSrc !== d.src || d.observedDst !== d.dst)) {
+      meta.push(['OBSERVED', `${d.observedSrc} → ${d.observedDst}`]);
+    }
     body = <div style={{ fontSize: 13, color: 'var(--fg2)', lineHeight: 1.9 }}>{t('mm.dtmfNote')}</div>;
   } else {
     const md = item.media;
@@ -896,6 +900,9 @@ function MessageModal({ item, onClose }) {
       ['LOST', String(md.lost || 0)],
       ['JITTER', md.jitterMs != null ? `${Number(md.jitterMs).toFixed(1)} ms` : '—']
     );
+    if (md.observedSrc && (md.observedSrc !== md.src || md.observedDst !== md.dst)) {
+      meta.push(['OBSERVED', `${md.observedSrc} → ${md.observedDst}`]);
+    }
     body = <div style={{ fontSize: 13, color: 'var(--fg2)', lineHeight: 1.9 }}>{t('mm.rtpNote')}</div>;
   }
 

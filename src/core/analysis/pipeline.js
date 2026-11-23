@@ -360,6 +360,29 @@ function parseRtpLazy(payload) {
   return _parseRtp(payload);
 }
 
+/**
+ * 该通话的 SDP 媒体端点（c= 连接地址 + m= 端口）。
+ * resolve(addr) 把实际抓到的 RTP 地址映射回 SDP 声明的端点：
+ * 精确匹配 → 端口一致（NAT/媒体网关改写 IP）→ IP 一致（端口不同）→ 原样返回。
+ */
+function sdpMediaEndpoints(analyzed, callId) {
+  const eps = (analyzed.sdpEndpoints || [])
+    .filter(e => e.callId === callId && e.ip && e.port)
+    .map(e => ({ addr: `${e.ip}:${e.port}`, ip: e.ip, port: Number(e.port), dir: e.dir }));
+  const byAddr = new Set(eps.map(e => e.addr));
+  const resolve = (addr) => {
+    if (!addr) return addr;
+    if (byAddr.has(addr)) return addr;
+    const [ip, port] = String(addr).split(':');
+    const byPort = eps.find(e => e.port === Number(port));
+    if (byPort) return byPort.addr;
+    const byIp = eps.find(e => e.ip === ip);
+    if (byIp) return byIp.addr;
+    return addr;
+  };
+  return { eps, resolve };
+}
+
 function callLadder(analyzed, callId) {
   const msgs = analyzed.sipMsgs.filter(m => m.callId === callId).sort((a, b) => a.tsUs - b.tsUs);
   const { actors, lanes } = buildLadder(msgs);
@@ -376,20 +399,29 @@ function callLadder(analyzed, callId) {
     })
     .sort((a, b) => a.startUs - b.startUs);
 
-  // RTP 对端可能不在 SIP 参与方里（典型：媒体经 B2BUA 转到另一台媒体服务器），补成独立参与方
-  const actorIps = new Set(actors.map(a => String(a.label).split(':')[0]));
+  // 媒体端点以 SDP（c= / m=）为准；实际抓到的 RTP 地址另存为 observed，便于 NAT / 媒体服务器改写时对照
+  const { eps, resolve } = sdpMediaEndpoints(analyzed, callId);
   for (const m of media) {
-    for (const addr of [m.src, m.dst]) {
-      const ip = String(addr || '').split(':')[0];
-      if (!ip || actorIps.has(ip)) continue;
-      actorIps.add(ip);
-      actors.push({ id: addr, label: addr, kind: 'media' });
-    }
+    m.observedSrc = m.src;
+    m.observedDst = m.dst;
+    m.src = resolve(m.src);
+    m.dst = resolve(m.dst);
   }
+
+  // RTP 对端可能不在 SIP 参与方里（典型：媒体经 B2BUA 转到另一台媒体服务器），补成独立参与方
+  const actorLabels = new Set(actors.map(a => a.label));
+  const addMediaActor = (addr) => {
+    if (!addr || actorLabels.has(addr)) return;
+    actorLabels.add(addr);
+    actors.push({ id: addr, label: addr, kind: 'media' });
+  };
+  // 先补 SDP 声明的媒体地址（即使这通电话没抓到 RTP，也能看到协商结果）
+  for (const e of eps) addMediaActor(e.addr);
+  for (const m of media) { addMediaActor(m.src); addMediaActor(m.dst); }
 
   return { actors, lanes, msgs: msgs.map(m => ({ ...m, cls: msgClass(m) })), media };
 }
 
 function sanitize(s) { return String(s).replace(/[^a-zA-Z0-9_-]/g, '_').slice(0, 64); }
 
-module.exports = { analyzeFile, analyzeTextLog, analyzeMedia, callLadder, scanCallDtmf, MAX_FILE };
+module.exports = { analyzeFile, analyzeTextLog, analyzeMedia, callLadder, scanCallDtmf, sdpMediaEndpoints, MAX_FILE };

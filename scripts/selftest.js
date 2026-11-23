@@ -295,6 +295,21 @@ console.log(`合成抓包：${pkts.length} 包 → ${pcapFile}`);
   const busy = mkPcm(1); addTone(busy, 0.1, 0.5, [480, 620], 7000);
   ok(detectInbandDtmf(busy, 8000, 0).length === 0, '忙音 480+620 不误检');
 
+  console.log('\n[11] 流序图媒体端点归属');
+  const { sdpMediaEndpoints } = require('../src/core/analysis/pipeline');
+  const fake = {
+    sdpEndpoints: [
+      { callId: 'c1', ip: '218.13.52.156', port: 16418 },
+      { callId: 'c1', ip: '121.41.91.21', port: 24490 },
+      { callId: 'c2', ip: '1.1.1.1', port: 9999 }
+    ]
+  };
+  const { eps: mediaEps, resolve } = sdpMediaEndpoints(fake, 'c1');
+  ok(mediaEps.length === 2, `仅取本通话 SDP 端点 ${mediaEps.length} 个`);
+  ok(resolve('218.13.52.156:16418') === '218.13.52.156:16418', 'SDP 端点精确匹配');
+  ok(resolve('172.16.167.48:24490') === '121.41.91.21:24490', 'NAT 改写 IP 时按端口回映射 SDP 端点');
+  ok(resolve('9.9.9.9:1234') === '9.9.9.9:1234', '无匹配时保留实际抓包地址');
+
   console.log(`\n========== 结果：${pass} 通过 / ${fail} 失败 ==========`);
   process.exit(fail ? 1 : 0);
 })().catch(e => { console.error('FATAL', e); process.exit(1); });
