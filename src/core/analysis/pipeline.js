@@ -216,7 +216,7 @@ async function analyzeMedia(analyzed, callId, onProgress, signal) {
     if (res.pcm) {
       streams[slot] = { ...res, ...desc };
       if (res.pcm.length < res.sampleRate * 300) {
-        dtmfParts.inband.push(...detectInbandDtmf(res.pcm, res.sampleRate, st.firstUs));
+        dtmfParts.inband.push(...detectInbandDtmf(res.pcm, res.sampleRate, st.firstUs || st.firstTsUs));
       }
     } else {
       streams[slot] = { ...desc, pcm: null, waveform: null, marks: res.marks, unsupported: res.unsupported };

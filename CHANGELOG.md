@@ -4,6 +4,22 @@ All notable changes to this project are documented in this file.
 The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and this project
 adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.0.17] — 2026-11-23
+
+### Fixed
+- **Phantom DTMF keys on ordinary speech** — calls carrying only G.711 audio (no RFC 2833 telephone-events, no SIP INFO)
+  could still show random keys, because the in-band detector accepted any frame where the best low-band and high-band
+  bins each held ≥12 % of the *pair's* energy. That test passes for speech. The detector now requires the two tones to
+  dominate the whole frame, the winning bin in each group to clearly beat its neighbour, a sane level difference
+  (twist), and a run of consecutive frames (≥40 ms); window filtering is computed at the exact DTMF frequencies instead
+  of rounded FFT bins. A capture with no keys now reports none, while real in-band DTMF (including ±1.5 % frequency
+  offset, low level and noisy audio) is still detected.
+- In-band detections now always carry a timestamp (fell back to the first RTP timestamp when the stream start was missing).
+
+### Tests
+- Six new self-tests pin the in-band criteria: true dual tones (with detuning, low level and noise) are detected;
+  speech-like multi-tone mixes, dial tone (350+440 Hz) and busy tone (480+620 Hz) are rejected.
+
 ## [1.0.16] — 2026-11-20
 
 ### Fixed

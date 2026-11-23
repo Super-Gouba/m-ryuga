@@ -263,6 +263,38 @@ console.log(`合成抓包：${pkts.length} 包 → ${pcapFile}`);
   ok(logBlocks[0]?.srcIp === '1.2.3.4' && logBlocks[0]?.dport === 5060, 'CALLFLOW 收发地址解析');
   ok(/INVITE sip:200@/.test(logBlocks[0]?.text || ''), '请求行与无空行 SDP 保留');
 
+  console.log('\n[10] 带内 DTMF 判据');
+  const { detectInbandDtmf } = require('../src/core/media/dtmf');
+  const mkPcm = sec => new Int16Array(Math.round(8000 * sec));
+  const addTone = (buf, at, dur, freqs, amp) => {
+    const s0 = Math.round(at * 8000), n = Math.round(dur * 8000);
+    for (let i = 0; i < n && s0 + i < buf.length; i++) {
+      let v = 0;
+      for (const f of freqs) v += Math.sin((2 * Math.PI * f * i) / 8000);
+      buf[s0 + i] = Math.max(-32768, Math.min(32767, Math.round(v * amp)));
+    }
+  };
+  let tone = mkPcm(1); addTone(tone, 0.3, 0.1, [770, 1336], 7000);
+  const hit = detectInbandDtmf(tone, 8000, 0);
+  ok(hit.length === 1 && hit[0].digit === '5', `双音 770+1336 识别为 5（实际 ${hit.map(x => x.digit).join('') || '无'}）`);
+  let detuned = mkPcm(1); addTone(detuned, 0.3, 0.1, [770 * 1.015, 1336 * 0.985], 6000);
+  ok(detectInbandDtmf(detuned, 8000, 0).length === 1, '频率偏差 ±1.5% 仍识别');
+  let noisy = mkPcm(1); addTone(noisy, 0.3, 0.1, [770, 1336], 3000);
+  for (let i = 0; i < noisy.length; i++) noisy[i] = Math.max(-32768, Math.min(32767, noisy[i] + Math.round((Math.random() - 0.5) * 1500)));
+  ok(detectInbandDtmf(noisy, 8000, 0).length === 1, '低电平 + 背景噪声仍识别');
+  let speech = mkPcm(1.2);
+  for (let i = 0; i < speech.length; i++) {
+    const v = 0.35 * Math.sin((2 * Math.PI * 420 * i) / 8000) + 0.3 * Math.sin((2 * Math.PI * 780 * i) / 8000)
+      + 0.25 * Math.sin((2 * Math.PI * 1180 * i) / 8000) + 0.2 * Math.sin((2 * Math.PI * 1520 * i) / 8000)
+      + 0.15 * Math.sin((2 * Math.PI * 2100 * i) / 8000) + (Math.random() - 0.5) * 0.3;
+    speech[i] = Math.round(v * 9000);
+  }
+  ok(detectInbandDtmf(speech, 8000, 0).length === 0, '语音样多频混合不误检');
+  const guid = mkPcm(1); addTone(guid, 0.1, 0.6, [350, 440], 6000);
+  ok(detectInbandDtmf(guid, 8000, 0).length === 0, '拨号音 350+440 不误检');
+  const busy = mkPcm(1); addTone(busy, 0.1, 0.5, [480, 620], 7000);
+  ok(detectInbandDtmf(busy, 8000, 0).length === 0, '忙音 480+620 不误检');
+
   console.log(`\n========== 结果：${pass} 通过 / ${fail} 失败 ==========`);
   process.exit(fail ? 1 : 0);
 })().catch(e => { console.error('FATAL', e); process.exit(1); });
