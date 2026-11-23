@@ -47,6 +47,8 @@ contextBridge.exposeInMainWorld('mryuga', {
   asrPickEngine: () => ipcRenderer.invoke('asr:pickEngine'),
   asrInstallEngine: () => ipcRenderer.invoke('asr:installEngine'),
   asrOpenModelsDir: () => ipcRenderer.invoke('asr:openModelsDir'),
+  asrModelCheck: () => ipcRenderer.invoke('asr:modelCheck'),
+  asrUpdateModel: () => ipcRenderer.invoke('asr:updateModel'),
   // 实时
   liveNpcapStatus: () => ipcRenderer.invoke('live:npcapStatus'),
   liveStart: (cfg) => ipcRenderer.invoke('live:start', cfg),
@@ -54,6 +56,7 @@ contextBridge.exposeInMainWorld('mryuga', {
   liveSave: (jobId) => ipcRenderer.invoke('live:save', { jobId }),
   liveDiscard: (jobId) => ipcRenderer.invoke('live:discard', { jobId }),
   liveJobs: () => ipcRenderer.invoke('live:jobs'),
+  liveTraffic: () => ipcRenderer.invoke('live:traffic'),
   // 应用
   takeOpenFiles: () => ipcRenderer.invoke('app:take-open-files'),
   resolveClose: (action, remember) => ipcRenderer.invoke('app:resolve-close', action, remember),
@@ -62,9 +65,10 @@ contextBridge.exposeInMainWorld('mryuga', {
   setCloseAction: (action) => ipcRenderer.invoke('app:set-close-action', action),
   version: () => ipcRenderer.invoke('app:version'),
   paths: () => ipcRenderer.invoke('app:paths'),
+  chooseDir: (kind) => ipcRenderer.invoke('app:chooseDir', kind),
   // 事件
   on: (channel, fn) => {
-    const allowed = ['task:started', 'task:progress', 'task:done', 'task:error', 'app:close-request', 'app:open-files', 'update:available', 'update:progress', 'asr:engine-progress', 'asr:progress', 'live:stats', 'live:snapshot', 'live:log', 'live:stopped'];
+    const allowed = ['task:started', 'task:progress', 'task:done', 'task:error', 'app:close-request', 'app:open-files', 'update:available', 'update:progress', 'asr:engine-progress', 'asr:model-progress', 'asr:progress', 'live:stats', 'live:snapshot', 'live:log', 'live:stopped'];
     if (allowed.includes(channel)) {
       const listener = (_e, payload) => fn(payload);
       ipcRenderer.on(channel, listener);

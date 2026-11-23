@@ -20,9 +20,35 @@ function LivePage() {
   const [logs, setLogs] = useState([]);
   const [busy, setBusy] = useState(false);
   const [history, setHistory] = useState([]);
+  const [traffic, setTraffic] = useState([]);       // 各网卡实时速率
+  const [sparks, setSparks] = useState({});         // 网卡名 → 最近 16 个速率采样
   const jobRef = useRef(null);
 
   const loadEnv = async () => setEnv(await api.liveNpcapStatus().catch(() => null));
+
+  // 进入实时抓包页即轮询网卡速率，帮助判断哪张网卡有流量
+  useEffect(() => {
+    let alive = true;
+    let timer = null;
+    const tick = async () => {
+      const r = await api.liveTraffic().catch(() => null);
+      if (!alive) return;
+      if (r?.ok) {
+        setTraffic(r.items || []);
+        setSparks(prev => {
+          const next = { ...prev };
+          for (const it of r.items || []) {
+            const arr = (next[it.name] || []).concat(Math.round(it.rxBps + it.txBps));
+            next[it.name] = arr.slice(-16);
+          }
+          return next;
+        });
+      }
+      timer = setTimeout(tick, 2000);
+    };
+    tick();
+    return () => { alive = false; if (timer) clearTimeout(timer); };
+  }, []);
 
   useEffect(() => {
     loadEnv();
@@ -215,13 +241,26 @@ function LivePage() {
             <div style={{ fontSize: 12, color: 'var(--fg3)', marginBottom: 6 }}>选择网卡（可多选，最多 8 张）</div>
             <div style={{ maxHeight: 280, overflow: 'auto', border: '1px solid var(--line)', borderRadius: 8 }}>
               {(env?.ifaces || []).length === 0 && <div style={{ padding: 12, color: 'var(--fg3)', fontSize: 12.5 }}>未枚举到接口</div>}
-              {(env?.ifaces || []).map(ifc => (
-                <label key={ifc.idx} className="ck" style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '6px 10px', borderBottom: '1px solid var(--line)', cursor: 'pointer' }}>
-                  <input type="checkbox" checked={selIf.includes(ifc.idx)} onChange={() => toggleIf(ifc.idx)} />
-                  <span className="badge mut" style={{ minWidth: 24, textAlign: 'center' }}>{ifc.idx}</span>
-                  <span style={{ flex: 1, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', fontSize: 12.5 }} title={ifc.device}>{trunc(ifc.desc, 68)}</span>
-                </label>
-              ))}
+              {(env?.ifaces || []).map(ifc => {
+                const ad = traffic.find(a => a.name === ifc.desc || a.desc === ifc.desc
+                  || (ifc.desc && (ifc.desc.includes(a.name) || (a.desc || '').includes(ifc.desc))));
+                const rate = ad ? (ad.rxBps + ad.txBps) : 0;
+                const busyIf = rate > 20480;
+                return (
+                  <label key={ifc.idx} className="ck" style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '6px 10px', borderBottom: '1px solid var(--line)', cursor: 'pointer' }}>
+                    <input type="checkbox" checked={selIf.includes(ifc.idx)} onChange={() => toggleIf(ifc.idx)} />
+                    <span className="badge mut" style={{ minWidth: 24, textAlign: 'center' }}>{ifc.idx}</span>
+                    <span style={{ flex: 1, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', fontSize: 12.5 }} title={ifc.device}>{trunc(ifc.desc, 60)}</span>
+                    <Spark data={ad ? sparks[ad.name] : null} />
+                    <span className="mono" style={{ width: 74, textAlign: 'right', fontSize: 11, color: busyIf ? 'var(--green)' : 'var(--fg3)' }}>
+                      {ad ? fmtRate(rate) : '—'}
+                    </span>
+                    <span className={`badge ${busyIf ? 'ok' : 'mut'}`} style={{ minWidth: 38, justifyContent: 'center' }}>
+                      {busyIf ? '有流量' : '空闲'}
+                    </span>
+                  </label>
+                );
+              })}
             </div>
 
             <div style={{ display: 'grid', gridTemplateColumns: '1fr 120px', gap: 8, marginTop: 12 }}>
@@ -287,6 +326,24 @@ function LivePage() {
       </div>
     </div>
   );
+}
+
+function fmtRate(bps) {
+  if (!bps) return '0 B/s';
+  if (bps > 1048576) return (bps / 1048576).toFixed(1) + ' MB/s';
+  if (bps > 1024) return Math.round(bps / 1024) + ' KB/s';
+  return Math.round(bps) + ' B/s';
+}
+
+/** 网卡速率迷你走势图 */
+function Spark({ data }) {
+  const W = 56, H = 16;
+  if (!data || data.length < 2) {
+    return <svg width={W} height={H} style={{ flexShrink: 0, opacity: .3 }}><line x1="0" y1={H - 2} x2={W} y2={H - 2} stroke="var(--line2)" /></svg>;
+  }
+  const max = Math.max(...data, 1);
+  const pts = data.map((v, i) => `${(i / (data.length - 1)) * W},${H - 2 - (v / max) * (H - 4)}`).join(' ');
+  return <svg width={W} height={H} style={{ flexShrink: 0 }}><polyline points={pts} fill="none" stroke="var(--accent)" strokeWidth="1.2" /></svg>;
 }
 
 registerPages({ LivePage });

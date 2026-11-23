@@ -40,6 +40,10 @@ function SettingsPage() {
   const [asr, setAsr] = useState(null);
   const [changelog, setChangelog] = useState(false);
   const [closeAct, setCloseAct] = useState('ask');
+  const [mc, setMc] = useState(null);
+  const [modelProg, setModelProg] = useState(null);
+  const [updating, setUpdating] = useState(false);
+  const [checkingModel, setCheckingModel] = useState(false);
 
   const loadUpd = () => api.updateGetSettings?.().then(setUpd).catch(() => {});
   useEffect(() => {
@@ -48,7 +52,41 @@ function SettingsPage() {
     api.version().then(setVer).catch(() => {});
     api.asrStatus?.().then(setAsr).catch(() => {});
     api.getCloseAction?.().then(setCloseAct).catch(() => {});
+    const off = api.on('asr:model-progress', p => setModelProg(p));
+    return () => off && off();
   }, []);
+
+  const changeDir = async (kind) => {
+    const r = await api.chooseDir(kind);
+    if (r?.ok) {
+      setPaths(r.paths);
+      showToast('ok', '目录已更新');
+      api.asrStatus?.().then(setAsr).catch(() => {});
+    }
+  };
+
+  const checkModel = async () => {
+    setCheckingModel(true);
+    try {
+      const r = await api.asrModelCheck();
+      setMc(r);
+      if (r?.ok) showToast('ok', r.upToDate ? '模型已是最新' : `有可用更新：${r.recommended?.name || 'ggml-small.bin'}`);
+      else showToast('err', '检查失败，请检查网络');
+    } finally { setCheckingModel(false); }
+  };
+
+  const updateModel = async () => {
+    setUpdating(true);
+    setModelProg({ pct: 0 });
+    try {
+      const r = await api.asrUpdateModel();
+      if (r.ok) {
+        showToast('ok', `模型已更新：${r.name}`);
+        setMc({ ok: true, upToDate: true, localName: r.name, localSize: r.size });
+        api.asrStatus?.().then(setAsr).catch(() => {});
+      } else showToast('err', r.error || '更新失败');
+    } finally { setUpdating(false); setModelProg(null); }
+  };
 
   const pickCloseAct = async v => {
     const r = await api.setCloseAction?.(v);
@@ -130,22 +168,18 @@ function SettingsPage() {
             <>
               <div className="settings-title">{t('set.storage')}</div>
               <section className="section">
-                {paths && [['应用数据', paths.userData], ['导出目录', paths.exports], ['缓存目录', paths.cache]].map(([label, p]) => (
+                {paths && [['应用数据', paths.userData, null], ['导出目录', paths.exports, 'exports'], ['缓存目录', paths.cache, 'cache'], ['模型目录', paths.models, 'models']].map(([label, p, kind]) => (
                   <div key={label} className="set-row">
                     <div style={{ minWidth: 0 }}>
                       <div className="set-label">{label}</div>
                       <div className="set-desc mono" style={{ wordBreak: 'break-all' }}>{p}</div>
                     </div>
-                    <button className="btn sm" onClick={() => api.showInFolder(p)}>打开</button>
+                    <div style={{ display: 'flex', gap: 6, flexShrink: 0 }}>
+                      {kind && <button className="btn sm" onClick={() => changeDir(kind)}>更改</button>}
+                      <button className="btn sm ghost" onClick={() => api.showInFolder(p)}>打开</button>
+                    </div>
                   </div>
                 ))}
-                <div className="set-row">
-                  <div>
-                    <div className="set-label">模型目录</div>
-                    <div className="set-desc mono" style={{ wordBreak: 'break-all' }}>{asr?.modelDir || '—'}</div>
-                  </div>
-                  <button className="btn sm" onClick={() => api.asrOpenModelsDir()}>打开</button>
-                </div>
               </section>
             </>
           )}
@@ -189,6 +223,21 @@ function SettingsPage() {
                     <div className="set-desc mono" style={{ wordBreak: 'break-all' }}>{asr?.activeModel || '未选择'}</div>
                   </div>
                   <span className={`badge ${asr?.activeModel ? 'ok' : 'err'}`}>{asr?.activeModel ? '已加载' : '缺失'}</span>
+                </div>
+                <div className="set-row">
+                  <div>
+                    <div className="set-label">模型更新</div>
+                    <div className="set-desc">
+                      {mc
+                        ? (mc.upToDate ? `已是最新（${mc.localName || '—'}）` : `推荐 ${mc.recommended?.name || 'ggml-small.bin'} · 可一键更新`)
+                        : '检查是否有新的推荐模型，一键在线更新'}
+                      {updating && modelProg ? ` · ${Math.round((modelProg.pct || 0) * 100)}%` : ''}
+                    </div>
+                  </div>
+                  <div style={{ display: 'flex', gap: 6, flexShrink: 0 }}>
+                    <button className="btn sm" onClick={checkModel} disabled={updating || checkingModel}>{checkingModel ? '检查中…' : '检查更新'}</button>
+                    <button className="btn sm primary" onClick={updateModel} disabled={updating}>{updating ? '更新中…' : '一键更新'}</button>
+                  </div>
                 </div>
                 <div className="set-row">
                   <div><div className="set-label">模型管理</div><div className="set-desc">在「语音转写」页查看推荐模型、下载链接与安装步骤</div></div>

@@ -147,6 +147,41 @@ function captureFiles(dir) {
     });
 }
 
+let lastTrafficSample = null;
+
+/** 读取各网卡累计字节数并换算成速率（Windows PowerShell，无原生依赖） */
+function adapterTraffic() {
+  const script = [
+    '[Console]::OutputEncoding=[System.Text.Encoding]::UTF8;',
+    '$st=@{};',
+    'Get-NetAdapterStatistics -ErrorAction SilentlyContinue | ForEach-Object { $st[$_.Name]=@{rx=[double]$_.ReceivedBytes;tx=[double]$_.SentBytes} };',
+    "Get-NetAdapter -ErrorAction SilentlyContinue | Select-Object Name,InterfaceDescription,Status,LinkSpeed,@{n='rx';e={$st[$_.Name].rx}},@{n='tx';e={$st[$_.Name].tx}} | ConvertTo-Json -Compress"
+  ].join(' ');
+  let arr = [];
+  try {
+    const out = execSync(`powershell -NoProfile -NonInteractive -Command "${script}"`, { encoding: 'utf8', timeout: 8000 }).trim();
+    if (out) {
+      const parsed = JSON.parse(out);
+      arr = Array.isArray(parsed) ? parsed : [parsed];
+    }
+  } catch { return { ok: false, items: [] }; }
+
+  const now = Date.now();
+  const prev = lastTrafficSample;
+  lastTrafficSample = { t: now, map: new Map(arr.map(a => [a.Name, { rx: a.rx || 0, tx: a.tx || 0 }])) };
+  const dt = prev ? Math.max(0.2, (now - prev.t) / 1000) : 0;
+  const items = arr.map(a => {
+    const p = prev ? prev.map.get(a.Name) : null;
+    return {
+      name: a.Name, desc: a.InterfaceDescription || a.Name, status: a.Status || '',
+      linkSpeed: a.LinkSpeed || '',
+      rxBps: p ? Math.max(0, (a.rx - p.rx) / dt) : 0,
+      txBps: p ? Math.max(0, (a.tx - p.tx) / dt) : 0
+    };
+  });
+  return { ok: true, items };
+}
+
 function registerLiveIpc(ipcMain, send, newTask, finishTask, getUserData) {
   ipcMain.handle('live:npcapStatus', async () => {
     const npcap = detectNpcap();
@@ -158,13 +193,16 @@ function registerLiveIpc(ipcMain, send, newTask, finishTask, getUserData) {
     return { npcap, dumpcap: !!dumpcap, dumpcapPath: dumpcap, ifaces, adapters: safeList() };
   });
 
+  // 网卡实时速率（用于在网卡列表上标注哪张卡有流量）
+  ipcMain.handle('live:traffic', () => adapterTraffic());
+
   ipcMain.handle('live:start', async (_e, cfg) => {
     const dumpcap = findDumpcap();
     if (!dumpcap) return { ok: false, error: '未找到 dumpcap（请安装 Wireshark/npcap）' };
     const { id, ac } = newTask('实时抓包');
     const jobId = `L${++jobSeq}`;
     // 先写临时目录：不落用户目录，停止后再决定保存或丢弃
-    const tmpDir = path.join(getUserData(), 'cache', 'live-tmp', jobId);
+    const tmpDir = path.join(getUserData(), 'live-tmp', jobId);
     fs.mkdirSync(tmpDir, { recursive: true });
 
     const idxs = Array.isArray(cfg.ifIdxs) && cfg.ifIdxs.length ? cfg.ifIdxs.slice(0, 8) : [cfg.ifIdx ?? 0];

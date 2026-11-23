@@ -4,6 +4,17 @@ All notable changes to this project are documented in this file.
 The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and this project
 adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.0.19] — 2026-11-23
+
+### Changed
+- **Clearer ladder** — participant headers show the address with its port (and a light "media" tag for SDP media endpoints) instead of a separate role line; every row (SIP, DTMF, RTP) now prints the port at both ends, RTP rows sit between the negotiated media ports, and rows use a subtle zebra band for easier tracking.
+- **Message table split** — the combined "Source → Destination" column is now two columns, **Source** and **Destination**, so values no longer wrap or misalign.
+- **Audio analysis** — the redundant "Stream" track block was removed; playback direction (mix / caller / callee), mute and seek stay in the player and legend, so the page is shorter.
+- **Live capture: which NIC has traffic** — each interface row now shows a live rate, a small sparkline and a "Traffic / Idle" badge, so you can tick the adapter that is actually carrying calls.
+- **One-click ASR model update** — Settings → Speech recognition gained **Check update** and **One-click update**; the recommended model is compared by size and downloaded in place, no manual file juggling.
+- **Configurable folders** — Settings → Data & folders now lets you change the export, cache and model folders (Application data stays fixed). Live-capture scratch files follow the cache folder.
+- **Installer lets you choose the folder** — the NSIS installer keeps the assisted flow with a directory-selection page (`allowToChangeInstallationDirectory`), so it no longer silently installs to one fixed path.
+
 ## [1.0.18] — 2026-11-23
 
 ### Fixed

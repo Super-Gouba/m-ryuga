@@ -220,6 +220,16 @@ function registerIpc(app, win) {
   /* ---------- 设置 ---------- */
   const settingsFile = path.join(app.getPath('userData'), 'settings.json');
   const readSettings = () => { try { return JSON.parse(fs.readFileSync(settingsFile, 'utf8')); } catch { return {}; } };
+  // 目录：默认在应用数据下，允许用户在设置里改到任意位置
+  const dirCfg = () => {
+    const s = readSettings();
+    const base = app.getPath('userData');
+    return {
+      exports: s.dirExports || path.join(base, 'exports'),
+      cache: s.dirCache || path.join(base, 'cache'),
+      models: s.dirModels || path.join(base, 'models')
+    };
+  };
   ipcMain.handle('settings:get', () => readSettings());
   ipcMain.handle('settings:set', (_e, patch) => {
     const cur = readSettings();
@@ -243,7 +253,7 @@ function registerIpc(app, win) {
     page: 'https://github.com/ggerganov/whisper.cpp/releases/tag/b5454'
   };
 
-  const asrRoot = () => path.join(app.getPath('userData'), 'models');
+  const asrRoot = () => dirCfg().models;
 
   const findAsrEngine = () => {
     const settings = readSettings();
@@ -393,6 +403,54 @@ function registerIpc(app, win) {
     throw last;
   };
 
+  /** 远端文件大小（跟随重定向），用于模型更新检查 */
+  const remoteSize = (url, redirects = 0) => new Promise((resolve) => {
+    const https = require('https');
+    const req = https.request(url, { method: 'HEAD', headers: { 'User-Agent': 'M-Ryuga' }, timeout: 20000 }, (res) => {
+      if (res.statusCode >= 300 && res.statusCode < 400 && res.headers.location && redirects < 6) {
+        res.resume();
+        let next = res.headers.location;
+        if (!next.startsWith('http')) next = new URL(next, url).href;
+        remoteSize(next, redirects + 1).then(resolve);
+        return;
+      }
+      resolve(Number(res.headers['content-length'] || 0));
+      res.resume();
+    });
+    req.on('error', () => resolve(0));
+    req.on('timeout', () => { req.destroy(); resolve(0); });
+    req.end();
+  });
+
+  /** 检查推荐模型是否有新版（按文件大小比对），一键更新时下载覆盖 */
+  ipcMain.handle('asr:modelCheck', async () => {
+    const rec = ASR_RECOMMENDED.find(r => r.file === 'ggml-small.bin') || ASR_RECOMMENDED[0];
+    const size = await remoteSize(rec.url);
+    const local = findAsrModels().filter(m => /^ggml-/i.test(m.name));
+    const best = local.slice().sort((a, b) => b.size - a.size)[0] || null;
+    const upToDate = !!(size && local.some(m => Math.abs(m.size - size) / size < 0.02));
+    return { ok: true, recommended: rec, remoteSize: size, localName: best?.name || '', localSize: best?.size || 0, upToDate };
+  });
+
+  ipcMain.handle('asr:updateModel', async (e) => {
+    const rec = ASR_RECOMMENDED.find(r => r.file === 'ggml-small.bin') || ASR_RECOMMENDED[0];
+    const dir = asrRoot();
+    fs.mkdirSync(dir, { recursive: true });
+    const dest = path.join(dir, rec.file);
+    const { id, ac } = newTask('更新语音模型');
+    try {
+      await downloadWithRetry(rec.url, `${dest}.part`, p => { if (!e.sender.isDestroyed()) e.sender.send('asr:model-progress', p); });
+      fs.renameSync(`${dest}.part`, dest);
+      fs.writeFileSync(settingsFile, JSON.stringify({ ...readSettings(), asrModelPath: dest }, null, 2));
+      finishTask(id, ac);
+      return { ok: true, path: dest, name: rec.file, size: fs.statSync(dest).size };
+    } catch (err) {
+      try { fs.unlinkSync(`${dest}.part`); } catch { /* 忽略 */ }
+      finishTask(id, ac);
+      return { ok: false, error: String(err.message || err) };
+    }
+  });
+
   ipcMain.handle('asr:pickEngine', async () => {
     const res = await dialog.showOpenDialog(win, {
       title: '选择 whisper.cpp 识别程序（whisper-cli.exe / main.exe）',
@@ -496,7 +554,7 @@ function registerIpc(app, win) {
       };
     }
 
-    const tmpDir = path.join(app.getPath('userData'), 'cache');
+    const tmpDir = dirCfg().cache;
     fs.mkdirSync(tmpDir, { recursive: true });
     const jobs = [];
     const temps = [];
@@ -589,15 +647,30 @@ function registerIpc(app, win) {
 
   /* ---------- 实时抓包 ---------- */
   const live = require('./live');
-  live.registerLiveIpc(ipcMain, send, newTask, finishTask, () => app.getPath('userData'));
+  live.registerLiveIpc(ipcMain, send, newTask, finishTask, () => dirCfg().cache);
 
   /* ---------- 应用关闭流程 ---------- */
   ipcMain.handle('app:version', () => app.getVersion());
   ipcMain.handle('app:paths', () => ({
     userData: app.getPath('userData'),
-    exports: path.join(app.getPath('userData'), 'exports'),
-    cache: path.join(app.getPath('userData'), 'cache')
+    exports: dirCfg().exports,
+    cache: dirCfg().cache,
+    models: dirCfg().models
   }));
+  // 选择并保存自定义目录（exports / cache / models）
+  ipcMain.handle('app:chooseDir', async (_e, kind) => {
+    if (!['exports', 'cache', 'models'].includes(kind)) return { ok: false, error: 'unknown kind' };
+    const r = await dialog.showOpenDialog(win, {
+      title: `选择${kind === 'exports' ? '导出' : kind === 'cache' ? '缓存' : '模型'}目录`,
+      properties: ['openDirectory', 'createDirectory']
+    });
+    if (r.canceled || !r.filePaths[0]) return { ok: false, canceled: true };
+    const dir = r.filePaths[0];
+    try { fs.mkdirSync(dir, { recursive: true }); } catch { /* 忽略 */ }
+    const key = kind === 'exports' ? 'dirExports' : kind === 'cache' ? 'dirCache' : 'dirModels';
+    fs.writeFileSync(settingsFile, JSON.stringify({ ...readSettings(), [key]: dir }, null, 2));
+    return { ok: true, paths: { userData: app.getPath('userData'), exports: dirCfg().exports, cache: dirCfg().cache, models: dirCfg().models } };
+  });
 }
 
 module.exports = { registerIpc };

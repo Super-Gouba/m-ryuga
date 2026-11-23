@@ -603,18 +603,17 @@ function LadderDiagram({ data, rows, pick, onPick }) {
 
         {actors.map((a, i) => {
           const [host, port] = String(a.label).split(':');
-          const boxW = Math.min(ACTOR_W - 24, 200);
-          // 参与方只区分信令 / 媒体：出现在 SIP 报文里的是信令，只有 RTP 的才是媒体
-          const role = a.kind === 'media' ? t('ladder.media') : t('ladder.sig');
+          const boxW = Math.min(ACTOR_W - 20, 200);
+          const isMedia = a.kind === 'media';
           return (
             <g key={i}>
-              <rect x={actorX(i) - boxW / 2} y={6} width={boxW} height={52} rx={8}
-                fill="var(--bg2)" stroke="var(--line2)" />
-              <text x={actorX(i)} y={21} textAnchor="middle" fontSize={9} fill="var(--fg3)" letterSpacing="1">{role}</text>
-              <text x={actorX(i)} y={38} textAnchor="middle" fontSize={11.5} fill="var(--fg)"
-                fontFamily="var(--font-mono)" fontWeight="600">{trunc(host, 22)}</text>
-              {port && <text x={actorX(i)} y={51} textAnchor="middle" fontSize={9.5} fill="var(--fg3)"
-                fontFamily="var(--font-mono)">:{port}</text>}
+              <rect x={actorX(i) - boxW / 2} y={8} width={boxW} height={50} rx={8}
+                fill={isMedia ? 'var(--accent-soft)' : 'var(--bg2)'}
+                stroke={isMedia ? 'var(--accent-line)' : 'var(--line2)'} />
+              <text x={actorX(i)} y={27} textAnchor="middle" fontSize={12} fontWeight={700} fill="var(--fg)"
+                fontFamily="var(--font-mono)">{trunc(host, 20)}</text>
+              <text x={actorX(i)} y={45} textAnchor="middle" fontSize={9.5} fill={isMedia ? 'var(--accent-dark)' : 'var(--fg3)'}
+                fontFamily="var(--font-mono)">{port ? `:${port}` : ''}{isMedia ? ` · ${t('ladder.media')}` : ''}</text>
               <line x1={actorX(i)} y1={HEAD_H} x2={actorX(i)} y2={H - 8} stroke="var(--line2)" strokeDasharray="4 5" />
             </g>
           );
@@ -642,6 +641,10 @@ function LadderDiagram({ data, rows, pick, onPick }) {
                 <rect x={mid - 52} y={y - 10} width={104} height={20} rx={10} fill="var(--warn-bg)" stroke="#ecd9b6" />
                 <text x={mid} y={y + 4} textAnchor="middle" fontSize={11} fontWeight="700" fill="var(--amber)"
                   fontFamily="var(--font-mono)">{t('ladder.dtmfKey', { d: d.digit })}</text>
+                {d.src && <text x={x1 + (x2 >= x1 ? -7 : 7)} y={y + 3.5} textAnchor={x2 >= x1 ? 'end' : 'start'} fontSize={9}
+                  fill="var(--fg3)" fontFamily="var(--font-mono)">{String(d.src).split(':').pop()}</text>}
+                {d.dst && <text x={x2 + (x2 >= x1 ? 7 : -7)} y={y + 3.5} textAnchor={x2 >= x1 ? 'start' : 'end'} fontSize={9}
+                  fill="var(--fg3)" fontFamily="var(--font-mono)">{String(d.dst).split(':').pop()}</text>}
                 <title>{`DTMF 按键 ${d.digit} · ${d.via} · ${fmtDateTime(r.tsUs)}`}</title>
               </g>
             );
@@ -661,6 +664,7 @@ function LadderDiagram({ data, rows, pick, onPick }) {
               <g key={`r${ri}`} role="button" tabIndex={0} onClick={() => onPick({ type: 'rtp', idx: r.idx })}
                 onKeyDown={e => { if (e.key === 'Enter') { e.preventDefault(); onPick({ type: 'rtp', idx: r.idx }); } }}
                 style={{ cursor: 'pointer' }}>
+                {ri % 2 === 1 && <rect x={0} y={y - h * 0.55} width={W} height={h} fill="rgba(22,32,43,.016)" />}
                 <rect className="ladder-row" x={0} y={y - h * 0.55} width={W} height={h} fill={active ? 'var(--warn-bg)' : 'transparent'} />
                 {active && <rect x={0} y={y - h * 0.55} width={3} height={h} fill="var(--orange)" />}
                 <text x={offX + 12} y={y + 3.5} fontSize={10.5} fill="var(--fg3)" fontFamily="var(--font-mono)">{rel}</text>
@@ -670,6 +674,10 @@ function LadderDiagram({ data, rows, pick, onPick }) {
                   fill="var(--orange)" fontFamily="var(--font-mono)">
                   {`RTP (${md.codec}) · ${md.packets} 包`}
                 </text>
+                <text x={x1 + (x2 >= x1 ? -7 : 7)} y={y + 3.5} textAnchor={x2 >= x1 ? 'end' : 'start'} fontSize={9}
+                  fill="var(--fg3)" fontFamily="var(--font-mono)">{String(md.src).split(':').pop()}</text>
+                <text x={x2 + (x2 >= x1 ? 7 : -7)} y={y + 3.5} textAnchor={x2 >= x1 ? 'start' : 'end'} fontSize={9}
+                  fill="var(--fg3)" fontFamily="var(--font-mono)">{String(md.dst).split(':').pop()}</text>
                 <title>{`RTP ${md.codec} · ${md.packets} 包\n${md.src} → ${md.dst}${(md.observedSrc && (md.observedSrc !== md.src || md.observedDst !== md.dst)) ? `\n${t('mm.observed')}: ${md.observedSrc} → ${md.observedDst}` : ''}\n点击试听该方向音频`}</title>
               </g>
             );
@@ -1063,7 +1071,7 @@ function MsgsTab({ data, rows, pick, onPick }) {
       </div>
       <div className="list-body tbl-scroll">
         <table className="tbl msgs-table">
-          <thead><tr><th style={{ width: 42 }}>#</th><th style={{ width: 168 }}>{t('msg.time')}</th><th>{t('msgs.signalCol')}</th><th>{t('msgs.endpointsCol')}</th></tr></thead>
+          <thead><tr><th style={{ width: 42 }}>#</th><th style={{ width: 168 }}>{t('msg.time')}</th><th>{t('msgs.signalCol')}</th><th style={{ width: 190 }}>{t('msgs.srcCol')}</th><th style={{ width: 190 }}>{t('msgs.dstCol')}</th></tr></thead>
           <tbody>
             {list.map(({ r, no }) => {
               const sel = pick?.type === r.type && pick?.idx === r.idx;
@@ -1076,7 +1084,8 @@ function MsgsTab({ data, rows, pick, onPick }) {
                     <td className="mono" style={{ color: 'var(--fg3)' }}>{no}</td>
                     <td className="mono">{fmtDateTime(d.startUs)}</td>
                     <td><span className="dtmf-pill">{t('msg.dtmfTitle')} {d.digit}</span> <span style={{ color: 'var(--fg3)', fontSize: 11.5 }}>{d.via}</span></td>
-                    <td className="mono" style={{ color: 'var(--fg3)', fontSize: 11.5 }}>{d.src || '—'} → {d.dst || '—'}</td>
+                    <td className="mono" style={{ color: 'var(--fg3)', fontSize: 11.5 }}>{d.src || '—'}</td>
+                    <td className="mono" style={{ color: 'var(--fg3)', fontSize: 11.5 }}>{d.dst || '—'}</td>
                   </tr>
                 );
               }
@@ -1088,7 +1097,8 @@ function MsgsTab({ data, rows, pick, onPick }) {
                   <td className="mono" style={{ color: 'var(--fg3)' }}>{no}</td>
                   <td className="mono">{fmtDateTime(m.tsUs)}</td>
                   <td className={`cls-${m.cls}`} style={{ fontWeight: 600 }}>{m.startLine}</td>
-                  <td className="mono" style={{ color: 'var(--fg3)', fontSize: 11.5 }}>{m.src} → {m.dst}</td>
+                  <td className="mono" style={{ color: 'var(--fg3)', fontSize: 11.5 }}>{m.src}</td>
+                  <td className="mono" style={{ color: 'var(--fg3)', fontSize: 11.5 }}>{m.dst}</td>
                 </tr>
               );
             })}
@@ -1520,25 +1530,6 @@ function AudioAnalysis({ media, soloKey, call, sel }) {
           <Stat label={t('diag.jitter')} value={`${stats.jitter.toFixed(1)} ms`} />
           <Stat label={t('audio.stalls')} value={String(stats.stalls)} sub="≥ 200 ms" />
           <Stat label={t('audio.maxGap')} value={`${Math.round(stats.longest)} ms`} />
-        </div>
-      </div>
-
-      <div className="card">
-        <div className="card-title">{t('audio.streamInfo')}</div>
-        <div className="atracks">
-          {tracks.map(([slot, st]) => (
-            <div key={slot} className="atrack">
-              <span className="adot" style={{ background: colors[slot] }} />
-              <b className="aname">{slot === 'a' ? t('ov.caller') : t('ov.callee')}</b>
-              <span className="badge mut">{st.codec || '—'}</span>
-              <span className="atrack-addr mono" title={st.key}>{String(st.key).replace('>', ' → ')}</span>
-              <input type="range" className="arange" min={0} max={Math.max(totalSec, 0.01)} step={0.01} value={cur}
-                onChange={e => seekTo(+e.target.value)} title={t('audio.seek')} />
-              <span className="mono atime">{fmtClock(cur)} / {fmtClock(totalSec)}</span>
-              <button className={`btn sm ${solo === slot ? 'primary' : ''}`} onClick={() => setSolo(solo === slot ? null : slot)}>{t('audio.solo')}</button>
-              <button className={`btn sm ${mute[slot] ? 'danger' : ''}`} onClick={() => setMute(m => ({ ...m, [slot]: !m[slot] }))}>{t('audio.mute')}</button>
-            </div>
-          ))}
         </div>
       </div>
 
